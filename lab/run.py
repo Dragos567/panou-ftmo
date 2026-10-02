@@ -25,7 +25,7 @@ def load_m1(data_dir, sym):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--data", required=True); ap.add_argument("--sym", default="EURUSD")
     ap.add_argument("--tf", default="5m"); ap.add_argument("--minutes", type=float, default=10); ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--job", default=None); ap.add_argument("--finish", default=None); ap.add_argument("--src", default="auto"); a = ap.parse_args()
+    ap.add_argument("--job", default=None); ap.add_argument("--finish", default=None); ap.add_argument("--src", default="auto"); ap.add_argument("--k", type=int, default=100); a = ap.parse_args()
     from . import search as S
     job = a.finish or a.job or time.strftime("%Y%m%d_%H%M%S") + "_%s_%s" % (a.sym, a.tf)
     out = os.path.join(a.data, "lab", job); os.makedirs(out, exist_ok=True)
@@ -57,7 +57,7 @@ def main():
         if a.finish:
             ck = json.load(open(os.path.join(out, "ckpt.json")))
             res = [(c["fit"], c["n"], c["avg"], c["g"]) for c in ck]; ntr = int(st.get("tried") or len(res))
-            save(state="validare", candidates=len(res), validation={"stage": "pregatire", "i": 0, "K": 25}, recovered=True)
+            save(state="validare", candidates=len(res), validation={"stage": "pregatire", "i": 0, "K": a.k}, recovered=True)
         else: save(state="cautare", segments={k: [iso(ctx.t[x[0]]), iso(ctx.t[min(x[1], ctx.n) - 1])] for k, x in ctx.seg.items()})
         live = {"t": 0.0}
         def prog(n, el, best, seen=None):
@@ -78,12 +78,12 @@ def main():
                 tmp = os.path.join(out, "ckpt.tmp"); json.dump([{"fit": float(f), "n": int(nn), "avg": float(av), "g": S._norm(g)} for f, nn, av, g in best], open(tmp, "w")); os.replace(tmp, os.path.join(out, "ckpt.json"))
             save(**kw)
         if not a.finish: res, ntr = S.search(ctx, a.minutes * 60, seed=a.seed, progress=prog)
-        save(state="validare", tried=int(ntr), candidates=len(res), validation={"stage": "pregatire", "i": 0, "K": 25})
+        save(state="validare", tried=int(ntr), candidates=len(res), validation={"stage": "pregatire", "i": 0, "K": a.k})
         cp = os.path.join(a.data, "lab", "cum_%s_%s.json" % (a.sym, a.tf))
         try: cum = json.load(open(cp))
         except Exception: cum = {"k": 0, "lock": 0, "runs": 0}
         def vcb(stage, i, K, blk): save(validation={"stage": stage, "i": int(i), "K": int(K), "blk": blk, "thr": float(S.zcrit(0.05 / max(K + cum["k"], 1)))})
-        val = S.validate(ctx, res, ntr, k_final=25, prior_k=cum["k"], prior_lock=cum["lock"], cb=vcb)
+        val = S.validate(ctx, res, ntr, k_final=a.k, prior_k=cum["k"], prior_lock=cum["lock"], cb=vcb)
         cum["k"] += len([v for v in val]); cum["lock"] += len([v for v in val if v["stages"].get("ftmo")]); cum["runs"] += 1
         json.dump(cum, open(cp, "w"))
         good = [v for v in val if v.get("relevant")]

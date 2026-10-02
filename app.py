@@ -550,7 +550,7 @@ def lab_api(qs):
         if p and p.poll() is None: return {"error": "ruleaza deja o cautare"}
         if not _have_np(): return {"error": "lipsesc numpy/numba - ruleaza ?do=setup", "setup": LABP.get("setup")}
         sy = qs.get("sym", ["EURUSD"])[0]; tf = qs.get("tf", ["5m"])[0]; mi = qs.get("min", ["10"])[0]; sd = qs.get("seed", ["1"])[0]
-        LABP["proc"] = subprocess.Popen(["nice", "-n", "10", sys.executable, "-m", "lab.run", "--data", DATA, "--sym", sy, "--tf", tf, "--minutes", mi, "--seed", sd],
+        LABP["proc"] = subprocess.Popen(["nice", "-n", "10", sys.executable, "-m", "lab.run", "--data", DATA, "--sym", sy, "--tf", tf, "--minutes", mi, "--seed", sd, "--k", qs.get("k", ["100"])[0]],
                                         cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, "lab.log"), "ab"), stderr=subprocess.STDOUT)
         return {"started": True, "sym": sy, "tf": tf, "minutes": mi}
     jobs = sorted(d for d in os.listdir(lab) if os.path.isdir(os.path.join(lab, d))) if os.path.isdir(lab) else []
@@ -614,7 +614,7 @@ def autopilot():
             n = cfg.get("n", 0); sy = symsok[n % len(symsok)]
             tf = cfg.get("tfs", ["5m", "15m"])[(n // 2) % len(cfg.get("tfs", ["5m", "15m"]))]
             before = set(d for d in os.listdir(os.path.join(DATA, "lab")) if os.path.isdir(os.path.join(DATA, "lab", d))) if os.path.isdir(os.path.join(DATA, "lab")) else set()
-            lab_api({"do": ["start"], "sym": [sy], "tf": [tf], "min": [str(cfg.get("minutes", 30))], "seed": [str(1000 + n)]})
+            lab_api({"do": ["start"], "sym": [sy], "tf": [tf], "min": [str(cfg.get("minutes", 30))], "seed": [str(1000 + n)], "k": [str(cfg.get("k", 100))]})
             time.sleep(5)
             new = sorted(set(d for d in os.listdir(os.path.join(DATA, "lab")) if os.path.isdir(os.path.join(DATA, "lab", d))) - before)
             cfg["n"] = n + 1; cfg["last_job"] = new[-1] if new else None; json.dump(cfg, open(ctl, "w"))
