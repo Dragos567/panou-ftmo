@@ -43,6 +43,17 @@ def main():
         iso = lambda x: time.strftime("%Y-%m-%d", time.gmtime(int(x)))
         save(state="pregatire", source=src, bars_m1=int(len(m1["t"])), first=iso(m1["t"][0]), last=iso(m1["t"][-1]))
         ctx = S.Ctx(m1, a.tf, cost_price=c, slip_price=s)
+        if src == "metaapi":
+            # cost = spread real masurat pe contul FTMO, pe ora (daca exista esantioane), x1.5 + comision; altfel valorile provizorii
+            try:
+                spd = json.load(open(os.path.join(a.data, "spread.json"))).get(a.sym, {})
+                means = [v["mean"] for v in spd.values() if v["n"] >= 30]
+                if means:
+                    med = float(np.median(means)); hrs = ((ctx.t + ctx.sec) // 3600 % 24).astype(int)
+                    tab = np.array([spd[str(h)]["mean"] if str(h) in spd and spd[str(h)]["n"] >= 30 else med for h in range(24)])
+                    comm = COMM.get(a.sym, (0.0, 0.0))[0]
+                    ctx.cost = 1.5 * tab[hrs] + comm; ctx.slip = COMM.get(a.sym, (0.0, 0.0))[1]; save(costs_provizorii=False, spread_samples=int(sum(v["n"] for v in spd.values())))
+            except Exception: pass
         if a.finish:
             ck = json.load(open(os.path.join(out, "ckpt.json")))
             res = [(c["fit"], c["n"], c["avg"], c["g"]) for c in ck]; ntr = int(st.get("tried") or len(res))

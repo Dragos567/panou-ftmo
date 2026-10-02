@@ -164,6 +164,22 @@ _qc = {"t": 0, "v": {}}; _ql = threading.Lock()
 def _fallback(s):
     with SLOCK: h = STORE.get((s, "1m")) or STORE.get((s, "5m")) or STORE.get((s, "15m")) or STORE.get((s, "1h"))
     if h: return {"price": h[-1][4], "prev": prev_24h(h)}
+_SPL = threading.Lock(); _SPD = {"v": None, "t": 0.0}
+def spread_add(s, sp):
+    """Spread real (ask-bid) esantionat pe contul FTMO, pe ora UTC: media, fara valorile aberante. Salvat in DATA/spread.json (folosit de laborator la costuri)."""
+    now = time.time(); hr = int(now // 3600 % 24)
+    with _SPL:
+        if _SPD["v"] is None:
+            try: _SPD["v"] = json.load(open(os.path.join(DATA, "spread.json")))
+            except Exception: _SPD["v"] = {}
+        d = _SPD["v"].setdefault(s, {}); e = d.setdefault(str(hr), {"n": 0, "mean": 0.0})
+        if e["n"] >= 20 and sp > 6 * e["mean"]: return
+        e["n"] += 1; e["mean"] += (sp - e["mean"]) / min(e["n"], 5000)
+        if now - _SPD["t"] > 120:
+            _SPD["t"] = now
+            try:
+                tmp = os.path.join(DATA, "spread.json.tmp"); json.dump(_SPD["v"], open(tmp, "w")); os.replace(tmp, os.path.join(DATA, "spread.json"))
+            except Exception: pass
 def _qone(s):
     # un simbol, independent: un simbol lent nu mai blocheaza restul
     while True:
@@ -173,6 +189,7 @@ def _qone(s):
             with SLOCK: h = STORE.get((s, "1h")) or STORE.get((s, "15m")) or STORE.get((s, "5m"))
             prev = prev_24h(h) if h else (_qc["v"].get(s) or {}).get("prev")
             with _ql: _qc["v"][s] = {"price": p["bid"], "prev": prev}; _qc["t"] = time.time()
+            if p.get("ask") and p["ask"] >= p["bid"]: spread_add(s, p["ask"] - p["bid"])
         except Exception as e:
             if s not in _qc["v"]:
                 f = _fallback(s)
@@ -649,17 +666,18 @@ if __name__ == "__main__":
     load_disk()
     try:
         from lab.hist import Hist
-        HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("HIST_YEARS", "3")))
+        HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("HIST_YEARS", "10")))
         HIST.start()
     except Exception as e: log("hist init", repr(e))
     def start_duka():
         global DUKA
         if _pylibs() not in sys.path: sys.path.insert(0, _pylibs())
+        if not os.environ.get("DUKA_SYMS"): return        # Dukascopy oprit implicit (throttling de pe IP-ul serverului); istoricul vine de la FTMO/MetaApi
         for _ in range(60):
             try:
                 import numpy  # noqa
                 from lab.duka import Duka
-                DUKA = Duka(DATA, log, os.environ.get("DUKA_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("DUKA_YEARS", "10")))
+                DUKA = Duka(DATA, log, [x for x in os.environ.get("DUKA_SYMS", "").split(",") if x], float(os.environ.get("DUKA_YEARS", "10")))
                 DUKA.start(); return
             except ImportError:
                 if LABP.get("setup") != "instalez" and not _have_np(): _setup_libs()
