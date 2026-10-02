@@ -86,7 +86,7 @@ def main():
         val = S.validate(ctx, res, ntr, k_final=25, prior_k=cum["k"], prior_lock=cum["lock"], cb=vcb)
         cum["k"] += len([v for v in val]); cum["lock"] += len([v for v in val if v["stages"].get("ftmo")]); cum["runs"] += 1
         json.dump(cum, open(cp, "w"))
-        good = [v for v in val if v["stages"].get("lock") and v["ftmo"]["bootstrap_pass_both"] >= 0.4]
+        good = [v for v in val if v.get("relevant")]
         stage = {k: sum(1 for v in val if v["stages"].get(k)) for k in ("val", "robust", "cost", "time", "ftmo", "lock")}
         json.dump({"job": job, "sym": a.sym, "tf": a.tf, "tried": ntr, "stages": stage, "finalists": val, "relevant": len(good), "costs": {"round_trip": c, "slip": s, "provizorii": True}},
                   open(os.path.join(out, "result.json"), "w"), default=lambda o: o.item() if hasattr(o, "item") else str(o))

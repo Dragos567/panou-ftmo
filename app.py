@@ -655,7 +655,7 @@ def lab_summary(qs):
             fails = {}
             for f in r["finalists"]:
                 k = (f.get("fail") or "trecut").split(":")[0]; fails[k] = fails.get(k, 0) + 1
-            out["last_result"] = {"job": j, "stages": r.get("stages"), "fails": fails, "finalists": [{"blk": f["genome"]["blk"], "train": f.get("train"), "val": f.get("val"), "fail": f.get("fail"), "ok": bool(f["stages"].get("lock")), "ftmo": f.get("ftmo")} for f in r["finalists"][:8]]}
+            out["last_result"] = {"job": j, "stages": r.get("stages"), "fails": fails, "finalists": [{"blk": f["genome"]["blk"], "train": f.get("train"), "val": f.get("val"), "fail": f.get("fail"), "ok": bool(f.get("relevant")), "ftmo": f.get("ftmo"), "lock": f.get("lock")} for f in r["finalists"][:8]]}
             break
         except Exception: continue
     return out

@@ -171,7 +171,7 @@ def search(ctx, budget_s, seed=1, min_n=80, pop=300, progress=None, blocks=None)
 
 
 # ---------------- palnia de validare ----------------
-def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_lock=True, log=lambda *a: None, prior_k=0, prior_lock=0, cb=None):
+def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_lock=True, log=lambda *a: None, prior_k=0, prior_lock=0, cb=None, pass_min=0.70):
     """cands: rezultate de la search (fitness, n, avg, genom), cele mai bune primele. Fiecare etapa elimina; se pastreaza motivul."""
     out = []; finals = []; seen_p = set()
     for c_ in cands:                                   # diversitate: cel mult o varianta pe (bloc, parametri de semnal)
@@ -211,13 +211,17 @@ def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_loc
         posc = sum(1 for c in chunks if len(c) and np.mean(c) > 0); rec["blocks_pos"] = posc
         if posc < 3: rec["fail"] = "stabilitate: doar %d/4 perioade pozitive" % posc; continue
         rec["stages"]["time"] = True
-        # 5) FTMO: trecere in ferestre mobile + bootstrap pe zile
-        ev = ftmo.evaluate(r, day, risk_pct=risk_pct, stride=1)
-        bs = ftmo.bootstrap(r, day, risk_pct=risk_pct, n_days=120, reps=400)
-        rec["ftmo"] = {"rolling_pass_both": ev["pass_both"], "rolling_fail_daily": ev["fail_daily"], "rolling_fail_total": ev["fail_total"],
+        # 5) FTMO: trecere in ferestre mobile + bootstrap pe zile; se alege riscul/tranzactie (0.25-1.0%) cu cea mai buna trecere
+        best = None
+        for rk in (0.25, 0.5, 0.75, 1.0):
+            ev = ftmo.evaluate(r, day, risk_pct=rk, stride=1)
+            sc = ev["pass_both"] - ev["fail_daily"] - ev["fail_total"] * 0.5
+            if best is None or sc > best[0]: best = (sc, rk, ev)
+        rk, ev = best[1], best[2]
+        bs = ftmo.bootstrap(r, day, risk_pct=rk, n_days=120, reps=400)
+        rec["ftmo"] = {"risk_pct": rk, "rolling_pass_both": ev["pass_both"], "rolling_fail_daily": ev["fail_daily"], "rolling_fail_total": ev["fail_total"],
                        "bootstrap_pass_both": bs["pass_both"], "starts": ev["starts"]}
         rec["stages"]["ftmo"] = True
-        out_n = len([x for x in out if x["stages"].get("ftmo")])
     # 6) lockbox, o singura data, doar pe supravietuitori (corectie pentru numarul lor)
     surv = [x for x in out if x["stages"].get("ftmo")]
     if cb: cb("lockbox", len(surv), len(surv), "")
@@ -226,6 +230,11 @@ def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_loc
         for x in surv:
             rl, dl, _ = trades(ctx, x["genome"], "lock"); tl = tstat(rl)
             x["lock"] = {"n": len(rl), "avg_r": float(np.mean(rl)) if len(rl) else 0.0, "t": tl, "thr": zl}
+            elk = ftmo.evaluate(rl, dl, risk_pct=x["ftmo"]["risk_pct"], stride=1) if len(rl) >= 20 else {"pass_both": 0.0, "starts": 0}
+            x["lock"]["ftmo_pass_both"] = elk["pass_both"]; x["lock"]["ftmo_starts"] = elk["starts"]
             x["stages"]["lock"] = bool(len(rl) >= 20 and np.mean(rl) > 0 and tl >= zl)
             if not x["stages"]["lock"]: x["fail"] = "lockbox: t=%.2f (n=%d) < prag %.2f" % (tl, len(rl), zl)
+            elif x["ftmo"]["bootstrap_pass_both"] < pass_min or elk["pass_both"] < pass_min:
+                x["fail"] = "FTMO: trecere %.0f%% (bootstrap) / %.0f%% (lockbox) < %.0f%%" % (x["ftmo"]["bootstrap_pass_both"] * 100, elk["pass_both"] * 100, pass_min * 100)
+            else: x["relevant"] = True
     return out
