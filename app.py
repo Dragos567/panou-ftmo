@@ -398,6 +398,8 @@ class H(BaseHTTPRequestHandler):
                     if HIST is None: return self.send(200, {"hist": "oprit"})
                     sy = qs.get("report", [""])[0]
                     return self.send(200, HIST.report(sy) if sy in SYMS else HIST.status())
+                if u.path == "/admin/lab":
+                    return self.send(200, lab_api(qs))
                 if u.path == "/admin/info":
                     with SLOCK: n = {"%s/%s" % k: len(v) for k, v in STORE.items()}
                     return self.send(200, {"site_key": KEY, "stat": STAT, "bars": n, "full": ["%s/%s" % k for k in FULL]})
@@ -453,6 +455,52 @@ def migrate():
         except Exception as e: log("migrate", f, e)
 migrate()
 BUILD = _mtime()
+
+# ---------- Laborator: porneste/urmareste cautarea (proces separat, prioritate mica) ----------
+LABP = {"proc": None}
+def _pylibs(): return os.path.join(DATA, "pylibs")
+def _lab_env():
+    e = dict(os.environ); e["PYTHONPATH"] = _pylibs() + os.pathsep + e.get("PYTHONPATH", ""); e["NUMBA_CACHE_DIR"] = os.path.join(DATA, "numba_cache"); return e
+def _have_np():
+    try: return subprocess.run([sys.executable, "-c", "import numpy"], env=_lab_env(), capture_output=True, timeout=60).returncode == 0
+    except Exception: return False
+def _setup_libs():
+    def go():
+        try:
+            LABP["setup"] = "instalez"
+            os.makedirs(_pylibs(), exist_ok=True)
+            has_pip = subprocess.run([sys.executable, "-m", "pip", "--version"], capture_output=True).returncode == 0
+            if not has_pip:
+                gp = os.path.join(DATA, "get-pip.py")
+                urllib.request.urlretrieve("https://bootstrap.pypa.io/get-pip.py", gp)
+                subprocess.run([sys.executable, gp, "--user", "--break-system-packages"], capture_output=True, timeout=600)
+            r = subprocess.run([sys.executable, "-m", "pip", "install", "--break-system-packages", "--target", _pylibs(), "numpy", "numba"], capture_output=True, text=True, timeout=1500)
+            LABP["setup"] = "gata" if _have_np() else "esuat: " + (r.stderr or r.stdout)[-400:]
+        except Exception as e: LABP["setup"] = "eroare: " + repr(e)
+    threading.Thread(target=go, daemon=True).start()
+def lab_api(qs):
+    lab = os.path.join(DATA, "lab"); act = qs.get("do", [""])[0]
+    if act == "setup":
+        if LABP.get("setup") != "instalez": _setup_libs()
+        return {"setup": LABP.get("setup")}
+    if act == "start":
+        p = LABP.get("proc")
+        if p and p.poll() is None: return {"error": "ruleaza deja o cautare"}
+        if not _have_np(): return {"error": "lipsesc numpy/numba - ruleaza ?do=setup", "setup": LABP.get("setup")}
+        sy = qs.get("sym", ["EURUSD"])[0]; tf = qs.get("tf", ["5m"])[0]; mi = qs.get("min", ["10"])[0]; sd = qs.get("seed", ["1"])[0]
+        LABP["proc"] = subprocess.Popen(["nice", "-n", "10", sys.executable, "-m", "lab.run", "--data", DATA, "--sym", sy, "--tf", tf, "--minutes", mi, "--seed", sd],
+                                        cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, "lab.log"), "ab"), stderr=subprocess.STDOUT)
+        return {"started": True, "sym": sy, "tf": tf, "minutes": mi}
+    jobs = sorted(os.listdir(lab)) if os.path.isdir(lab) else []
+    job = qs.get("job", [jobs[-1] if jobs else ""])[0]
+    out = {"jobs": jobs[-10:], "setup": LABP.get("setup"), "numpy": _have_np() if qs.get("chk") else None}
+    if job:
+        for nm in ("status", "result"):
+            try: out[nm] = json.load(open(os.path.join(lab, job, nm + ".json")))
+            except Exception: pass
+        if qs.get("full", [""])[0] != "1" and "result" in out:
+            r = out["result"]; r["finalists"] = [{k: f.get(k) for k in ("genome", "train", "val", "robust", "cost_x2_avg_r", "blocks_pos", "ftmo", "lock", "fail", "stages")} for f in r["finalists"][:12]]
+    return out
 
 HIST = None
 if __name__ == "__main__":
