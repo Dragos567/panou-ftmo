@@ -33,12 +33,14 @@ def hour_to_m1(raw, scale, hour_start):
     return out
 
 
+PAUSE = threading.Event()
 _SEM = threading.Semaphore(4)   # cel mult 4 cereri simultane in total (Dukascopy raspunde 503 cand e suprasolicitat)
 
 
 def fetch(url, tries=4):
     last = None
     for k in range(tries):
+        while PAUSE.is_set(): time.sleep(1)
         try:
             with _SEM, urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=25) as r: return r.read()
         except urllib.error.HTTPError as e:

@@ -412,6 +412,23 @@ class H(BaseHTTPRequestHandler):
                         except urllib.error.HTTPError as e: out.append({"url": url, "code": e.code, "hdr": dict(e.headers.items())})
                         except Exception as e: out.append({"url": url, "err": repr(e)})
                     return self.send(200, out)
+                if u.path == "/admin/dukabench":
+                    from lab import duka as _dk
+                    conc = int(qs.get("conc", ["1"])[0]); delay = float(qs.get("delay", ["0.3"])[0]); n = int(qs.get("n", ["16"])[0]); day = qs.get("day", ["2024/02/12"])[0]
+                    _dk.PAUSE.set(); time.sleep(25)
+                    try:
+                        t0 = time.time(); res = []
+                        def one(h):
+                            url = "https://datafeed.dukascopy.com/datafeed/EURUSD/%s/%02dh_ticks.bi5" % (day, h); t1 = time.time()
+                            try:
+                                with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=25) as r: b = r.read(); c = r.status; ln = len(b)
+                            except urllib.error.HTTPError as e: c = e.code; ln = 0
+                            except Exception as e: c = repr(e)[:40]; ln = 0
+                            time.sleep(delay); return [h, c, ln, round(time.time() - t1, 2)]
+                        from concurrent.futures import ThreadPoolExecutor
+                        with ThreadPoolExecutor(conc) as ex: res = list(ex.map(one, range(n)))
+                        return self.send(200, {"conc": conc, "delay": delay, "total_s": round(time.time() - t0, 1), "res": res})
+                    finally: _dk.PAUSE.clear()
                 if u.path == "/admin/duka": return self.send(200, DUKA.status() if DUKA else {"duka": "oprit"})
                 if u.path == "/admin/info":
                     with SLOCK: n = {"%s/%s" % k: len(v) for k, v in STORE.items()}
