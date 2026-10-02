@@ -394,6 +394,10 @@ class H(BaseHTTPRequestHandler):
                 if u.path == "/admin/fetchsite": return self.send(200, fetch_site(qs.get("src", [""])[0], qs.get("code", [""])[0]))
                 if u.path == "/admin/status": return self.send(200, {"build": BUILD, "stat": STAT, "sha": (open(os.path.join(DATA, "repo.sha")).read()[:8] if os.path.exists(os.path.join(DATA, "repo.sha")) else None)})
                 if u.path == "/admin/log": return self.send(200, {"log": list(LOG), "stat": STAT})
+                if u.path == "/admin/hist":
+                    if HIST is None: return self.send(200, {"hist": "oprit"})
+                    sy = qs.get("report", [""])[0]
+                    return self.send(200, HIST.report(sy) if sy in SYMS else HIST.status())
                 if u.path == "/admin/info":
                     with SLOCK: n = {"%s/%s" % k: len(v) for k, v in STORE.items()}
                     return self.send(200, {"site_key": KEY, "stat": STAT, "bars": n, "full": ["%s/%s" % k for k in FULL]})
@@ -450,8 +454,14 @@ def migrate():
 migrate()
 BUILD = _mtime()
 
+HIST = None
 if __name__ == "__main__":
     load_disk()
+    try:
+        from lab.hist import Hist
+        HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("HIST_YEARS", "3")))
+        HIST.start()
+    except Exception as e: log("hist init", repr(e))
     def boot():
         for i in range(30):
             try: bases(); break
