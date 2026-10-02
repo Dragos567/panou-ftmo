@@ -38,7 +38,20 @@ def main():
         save(state="pregatire", bars_m1=int(len(m1["t"])), first=iso(m1["t"][0]), last=iso(m1["t"][-1]))
         ctx = S.Ctx(m1, a.tf, cost_price=c, slip_price=s)
         save(state="cautare", segments={k: [iso(ctx.t[x[0]]), iso(ctx.t[min(x[1], ctx.n) - 1])] for k, x in ctx.seg.items()})
-        def prog(n, el, best): save(tried=int(n), elapsed=int(el), best_train_t=float(best))
+        live = {"t": 0.0}
+        def prog(n, el, best, seen=None):
+            kw = dict(tried=int(n), elapsed=int(el), best_train_t=float(best))
+            if seen is not None and time.time() - live["t"] > 8:     # previzualizare live: cei mai buni 8 (unici pe bloc+parametri); validarea e DOAR afisata, nu intra in selectie
+                live["t"] = time.time(); top = []; kp = set()
+                for fit, n_tr, avg, g in sorted(seen.values(), key=lambda x: -x[0])[:200]:
+                    k = (g["blk"], tuple(sorted(g["p"].items())))
+                    if k in kp or fit <= -9: continue
+                    kp.add(k); rv, _, _ = S.trades(ctx, g, "val")
+                    top.append({"blk": str(g["blk"]), "htf": str(g["htf"]), "n_tr": int(n_tr), "avg_tr": float(avg), "t_tr": float(fit), "n_val": int(len(rv)),
+                                "avg_val": float(np.mean(rv)) if len(rv) else 0.0, "t_val": float(S.tstat(rv))})
+                    if len(top) >= 8: break
+                kw["live_top"] = top
+            save(**kw)
         res, ntr = S.search(ctx, a.minutes * 60, seed=a.seed, progress=prog)
         save(state="validare", tried=int(ntr), candidates=len(res))
         cp = os.path.join(a.data, "lab", "cum_%s_%s.json" % (a.sym, a.tf))

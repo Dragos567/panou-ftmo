@@ -43,7 +43,7 @@ button{background:var(--panel);border:1px solid var(--line);color:var(--text);bo
 <div class="card funnel" id="funnel"></div>
 <p class="note">Fiecare variantă e testată mai întâi pe prima parte a istoricului (train). Doar cele mai bune 25 ajung la <b>validare</b> (perioadă pe care căutarea nu a văzut-o), apoi la robustețe (variante vecine), costuri x2, stabilitate în timp și simulatorul FTMO. La final, <b>lockbox</b>: ultima parte a istoricului, atinsă o singură dată. O strategie e „relevantă” doar dacă le trece pe toate.</p>
 
-<h2>Ultima rulare terminată: cei mai buni candidați și de ce au picat</h2>
+<h2 id="finTitle">Candidați</h2>
 <div class="card tbl" id="fin"></div>
 
 <h2>Istoric rulări</h2>
@@ -92,8 +92,15 @@ function render(d){
   const st=[['Încercate pe train',t.tried],['Trecut validarea',t.val],['Trecut robustețea',t.robust],['Trecut costuri x2',t.cost],['Stabile în timp',t.time],['Trecut simulatorul FTMO',t.ftmo],['Trecut lockbox (relevante)',t.lock]];
   const mx=Math.max(1,t.tried);
   $('funnel').innerHTML=st.map((x,i)=>`<div class="row"><div class="nm">${x[0]}</div><div class="bw"><i style="width:${i?Math.max(0.5,x[1]/Math.max(1,st[1][1]||1)*100):100}%"></i></div><div class="ct">${fmt(x[1])}</div></div>`).join('')+'<div class="note" style="margin-top:6px">Bara fiecărei etape e raportată la numărul care a trecut de validare; doar cei mai buni 25 din fiecare rulare ajung la validare.</div>';
-  const lr=d.last_result;
-  $('fin').innerHTML=lr?`<table><tr><th>Bloc</th><th class=n>t train</th><th class=n>n val</th><th class=n>t val</th><th>Motiv</th></tr>`+lr.finalists.map(f=>`<tr><td>${f.blk}</td><td class=n>${f.train?f.train.t.toFixed(2):'–'}</td><td class=n>${f.val?f.val.n:'–'}</td><td class=n>${f.val?f.val.t.toFixed(2):'–'}</td><td class="${f.ok?'up':'muted'}">${f.ok?'RELEVANT':(f.fail||'')}</td></tr>`).join('')+'</table>':'<span class="muted">încă nicio rulare terminată</span>';
+  const lt=c&&c.live_top;const lr=d.last_result;
+  const f2=x=>x==null?'–':x.toFixed(2),sg=x=>x==null?'–':(x>0?'+':'')+x.toFixed(3);
+  if(lt&&lt.length){
+    $('finTitle').textContent='Cei mai buni candidați chiar acum (se reîmprospătează la ~8 s)';
+    $('fin').innerHTML='<table><tr><th>Bloc</th><th>HTF</th><th class=n>n train</th><th class=n>R mediu train</th><th class=n>t train</th><th class=n>n val</th><th class=n>R mediu val</th><th class=n>t val</th></tr>'+lt.map(f=>`<tr><td>${f.blk}</td><td>${f.htf}</td><td class=n>${f.n_tr}</td><td class="n ${f.avg_tr>0?'up':'down'}">${sg(f.avg_tr)}</td><td class=n>${f2(f.t_tr)}</td><td class=n>${f.n_val}</td><td class="n ${f.avg_val>0?'up':'down'}">${sg(f.avg_val)}</td><td class=n>${f2(f.t_val)}</td></tr>`).join('')+'</table><div class="note" style="margin-top:8px">Coloana „val” e doar o previzualizare: selecția nu o folosește. Validarea oficială se face o singură dată, la finalul rulării, pe cei mai buni 25, cu prag corectat pentru numărul lor.</div>';
+  }else if(lr){
+    $('finTitle').textContent='Ultima rulare terminată: candidații și de ce au picat';
+    $('fin').innerHTML=`<table><tr><th>Bloc</th><th class=n>t train</th><th class=n>n val</th><th class=n>t val</th><th>Motiv</th></tr>`+lr.finalists.map(f=>`<tr><td>${f.blk}</td><td class=n>${f.train?f2(f.train.t):'–'}</td><td class=n>${f.val?f.val.n:'–'}</td><td class=n>${f.val?f2(f.val.t):'–'}</td><td class="${f.ok?'up':'muted'}">${f.ok?'RELEVANT':(f.fail||'')}</td></tr>`).join('')+'</table>';
+  }else $('fin').innerHTML='<span class="muted">încă nicio rulare terminată</span>';
   $('jobs').innerHTML='<table><tr><th>Început</th><th>Simbol</th><th>TF</th><th>Stare</th><th class=n>Încercate</th><th class=n>t max</th><th class=n>Val</th><th class=n>Final</th></tr>'+d.jobs.map(j=>`<tr><td>${dt(j.started)}</td><td>${j.sym}</td><td>${j.tf}</td><td class="${j.state==='eroare'?'down':''}">${j.state}</td><td class=n>${fmt(j.tried)}</td><td class=n>${j.best_train_t!=null?j.best_train_t.toFixed(2):'–'}</td><td class=n>${j.stages?j.stages.val:'–'}</td><td class="n ${j.relevant?'up':''}">${j.stages?j.relevant:'–'}</td></tr>`).join('')+'</table>';
   const h=Object.entries(d.hist||{}).map(([k,v])=>`<div>${k}: <b>${fmt(v.bars)}</b> bare M1, ${iso(v.oldest)} → ${iso(v.newest)} <span class="muted">· ${v.state}</span></div>`).join('');
   $('ctl').innerHTML=h+`<div style="margin-top:12px"><button id="tg">${a.on?'Pune pilotul pe pauză':'Pornește pilotul'}</button></div>`;

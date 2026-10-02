@@ -570,7 +570,7 @@ def lab_summary(qs):
     for j in jobs:
         try: st = json.load(open(os.path.join(lab, j, "status.json")))
         except Exception: continue
-        r = {k: st.get(k) for k in ("job", "sym", "tf", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error")}
+        r = {k: st.get(k) for k in ("job", "sym", "tf", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error", "live_top")}
         rows.append(r)
         if st.get("state") == "gata":
             tot["runs"] += 1; tot["tried"] += st.get("tried") or 0; tot["relevant"] += st.get("relevant") or 0; tot["secs"] += st.get("elapsed") or 0
@@ -585,7 +585,7 @@ def lab_summary(qs):
     for j in reversed(jobs):
         try:
             r = json.load(open(os.path.join(lab, j, "result.json")))
-            out["last_result"] = {"job": j, "stages": r.get("stages"), "finalists": [{"blk": f["genome"]["blk"], "train": f.get("train"), "val": f.get("val"), "fail": f.get("fail"), "ok": bool(f["stages"].get("lock"))} for f in r["finalists"][:8]]}
+            out["last_result"] = {"job": j, "stages": r.get("stages"), "finalists": [{"blk": f["genome"]["blk"], "train": f.get("train"), "val": f.get("val"), "fail": f.get("fail"), "ok": bool(f["stages"].get("lock")), "ftmo": f.get("ftmo")} for f in r["finalists"][:8]]}
             break
         except Exception: continue
     return out
