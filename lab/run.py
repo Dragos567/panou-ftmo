@@ -27,7 +27,7 @@ def main():
     from . import search as S
     job = a.job or time.strftime("%Y%m%d_%H%M%S") + "_%s_%s" % (a.sym, a.tf)
     out = os.path.join(a.data, "lab", job); os.makedirs(out, exist_ok=True)
-    st = {"job": job, "sym": a.sym, "tf": a.tf, "state": "incarc date", "started": int(time.time()), "costs_provizorii": True}
+    st = {"job": job, "sym": a.sym, "tf": a.tf, "state": "incarc date", "started": int(time.time()), "costs_provizorii": True, "minutes": a.minutes}
     def save(**kw):
         st.update(kw); st["updated"] = int(time.time())
         json.dump(st, open(os.path.join(out, "status.json.tmp"), "w")); os.replace(os.path.join(out, "status.json.tmp"), os.path.join(out, "status.json"))

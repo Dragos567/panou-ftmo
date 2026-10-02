@@ -350,7 +350,7 @@ LOGIN = """<!doctype html><meta charset=utf-8><meta name=viewport content="width
 <input name=k type=password autofocus autocomplete=current-password placeholder="Cod de acces" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #1c2530;background:#0f151c;color:inherit;font-size:16px">
 <button style="width:100%;margin-top:10px;padding:12px;border-radius:8px;border:0;background:#e0a93b;color:#15110a;font-weight:600;font-size:16px">Intră</button>@@ERR@@</form></body>"""
 STATIC = ["manifest.webmanifest", "sw.js", "icon-180.png", "icon-192.png", "icon-512.png", "favicon.png"]
-PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html"}
+PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html", "/lab": "lab.html"}
 RUN = {"p": None}
 def run_probe():
     if RUN["p"] and RUN["p"].poll() is None: return False
@@ -411,6 +411,7 @@ class H(BaseHTTPRequestHandler):
                 ext = os.path.splitext(u.path)[1]
                 ct = {".png": "image/png", ".js": "application/javascript", ".webmanifest": "application/manifest+json"}.get(ext, "application/octet-stream")
                 with open(os.path.join(HERE, u.path.lstrip("/")), "rb") as f: return self.send(200, f.read(), ct)
+            if u.path == "/api/lab": return self.send(200, lab_summary(qs))
             if u.path == "/api/status":
                 age = round(time.time() - STAT["last_ok"], 1) if STAT["last_ok"] else None
                 return self.send(200, {"agent_age": age, "source": "FTMO/MetaApi"})
@@ -451,6 +452,10 @@ def migrate():
             t = t.replace("Panou Trading Personal", "Altrix").replace("Panou Trading", "Altrix").replace("Panou FTMO", "Altrix")
             t = t.replace('<div class="brand">Panou FTMO<small>', '<div class="brand">Altrix<small>')
             t = t.replace('<div class="brand">Trading<small>', '<div class="brand">Altrix<small>')
+            if 'href="/lab"' not in t:
+                t = t.replace('<a href="/fvg" data-p="/fvg"><b>◈</b>FVG · MSS</a></nav>', '<a href="/fvg" data-p="/fvg"><b>◈</b>FVG · MSS</a><a href="/lab" data-p="/lab"><b>⚗</b>Laborator</a></nav>')
+                t = t.replace('<a href="/fvg">FVG · Lichiditate · MSS</a></nav>', '<a href="/fvg">FVG · Lichiditate · MSS</a><a href="/lab">Laborator</a></nav>')
+                t = t.replace('<a href="/fvg" aria-current="page">FVG · Lichiditate · MSS</a></nav>', '<a href="/fvg" aria-current="page">FVG · Lichiditate · MSS</a><a href="/lab">Laborator</a></nav>')
             if t != o: open(p, "w", encoding="utf-8").write(t)
         except Exception as e: log("migrate", f, e)
 migrate()
@@ -550,6 +555,40 @@ def autopilot():
             cfg["n"] = n + 1; cfg["last_job"] = new[-1] if new else None; json.dump(cfg, open(ctl, "w"))
         except FileNotFoundError: pass
         except Exception as e: log("autopilot", repr(e))
+
+def lab_summary(qs):
+    lab = os.path.join(DATA, "lab"); out = {"now": int(time.time())}
+    try: cfg = json.load(open(os.path.join(lab, "auto.json")))
+    except Exception: cfg = {}
+    if qs.get("do", [""])[0] == "auto" and "on" in qs:
+        cfg["on"] = qs["on"][0] == "1"; os.makedirs(lab, exist_ok=True); json.dump(cfg, open(os.path.join(lab, "auto.json"), "w"))
+    p = LABP.get("proc")
+    out["auto"] = {"on": bool(cfg.get("on")), "minutes": cfg.get("minutes", 30), "found": cfg.get("found", 0), "running": bool(p and p.poll() is None)}
+    out["hist"] = {k: {"bars": v.get("bars"), "state": v.get("state"), "oldest": v.get("oldest"), "newest": v.get("newest")} for k, v in (HIST.status().items() if HIST else []) if isinstance(v, dict)}
+    jobs = sorted(d for d in os.listdir(lab) if os.path.isdir(os.path.join(lab, d))) if os.path.isdir(lab) else []
+    rows = []; tot = {"tried": 0, "runs": 0, "val": 0, "robust": 0, "cost": 0, "time": 0, "ftmo": 0, "lock": 0, "relevant": 0, "secs": 0}
+    for j in jobs:
+        try: st = json.load(open(os.path.join(lab, j, "status.json")))
+        except Exception: continue
+        r = {k: st.get(k) for k in ("job", "sym", "tf", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error")}
+        rows.append(r)
+        if st.get("state") == "gata":
+            tot["runs"] += 1; tot["tried"] += st.get("tried") or 0; tot["relevant"] += st.get("relevant") or 0; tot["secs"] += st.get("elapsed") or 0
+            for k, v in (st.get("stages") or {}).items(): tot[k] += v
+    out["totals"] = tot; out["jobs"] = rows[-25:][::-1]
+    cur = [r for r in rows if r["state"] in ("incarc date", "pregatire", "cautare", "validare")]
+    out["current"] = cur[-1] if cur and out["auto"]["running"] else None
+    for f in ("EURUSD_5m", "EURUSD_15m", "NIKKEI_5m", "NIKKEI_15m"):
+        try: out.setdefault("cum", {})[f] = json.load(open(os.path.join(lab, "cum_%s.json" % f)))
+        except Exception: pass
+    # cel mai bun finalist din ultima rulare terminata
+    for j in reversed(jobs):
+        try:
+            r = json.load(open(os.path.join(lab, j, "result.json")))
+            out["last_result"] = {"job": j, "stages": r.get("stages"), "finalists": [{"blk": f["genome"]["blk"], "train": f.get("train"), "val": f.get("val"), "fail": f.get("fail"), "ok": bool(f["stages"].get("lock"))} for f in r["finalists"][:8]]}
+            break
+        except Exception: continue
+    return out
 
 HIST = None
 if __name__ == "__main__":
