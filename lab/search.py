@@ -158,7 +158,7 @@ def search(ctx, budget_s, seed=1, min_n=80, pop=300, progress=None, blocks=None)
             for _ in range(50):
                 ev(mutate(top[rng.integers(len(top))][3], rng, 1 + int(rng.integers(2))))
         phase += 1
-        if progress and phase % 5 == 0: progress(len(seen), time.time() - t0, max((v[0] for v in seen.values()), default=0))
+        if progress and phase % 2 == 0: progress(len(seen), time.time() - t0, max((v[0] for v in seen.values()), default=0))
     res = sorted(seen.values(), key=lambda x: -x[0])
     return res, len(seen)
 

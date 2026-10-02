@@ -60,22 +60,34 @@ const dur=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floo
 const ago=(t,now)=>{const s=now-t;return s<90?s+' s':s<5400?Math.round(s/60)+' min':Math.round(s/3600)+' h'};
 const dt=t=>t?new Date(t*1000).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'–';
 const iso=t=>t?new Date(t*1000).toISOString().slice(0,10):'–';
+const TW={};let LAST=null,RECV=0;
+function tw(k,target,f){f=f||fmt;const o=TW[k]||(TW[k]={cur:target,f});o.target=target;o.f=f;return `<span class="tw" data-k="${k}">${f(Math.round(o.cur))}</span>`}
+function frame(){
+  for(const el of document.querySelectorAll('.tw')){const o=TW[el.dataset.k];if(!o)continue;const df=o.target-o.cur;o.cur=Math.abs(df)<0.6?o.target:o.cur+df*0.12;const t=o.f(Math.round(o.cur));if(el.textContent!==t)el.textContent=t}
+  if(LAST){const now=LAST.now+(Date.now()-RECV)/1000;
+    for(const el of document.querySelectorAll('[data-live]')){const k=el.dataset.live;let t;
+      if(k==='elapsed'&&LAST.current)t=dur(now-LAST.current.started);
+      else if(k==='secs')t=dur(LAST.totals.secs+(LAST.current?now-LAST.current.started:0));
+      else if(k==='bar'&&LAST.current&&LAST.current.state==='cautare'){el.style.width=Math.min(100,(now-LAST.current.started)/((LAST.current.minutes||30)*60)*100)+'%';continue}
+      if(t!=null&&el.textContent!==t)el.textContent=t}}
+  requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
 async function load(q){
   try{
-    const r=await fetch('/api/lab'+(q||''),{cache:'no-store'});const d=await r.json();render(d);$('upd').textContent='actualizat '+new Date().toLocaleTimeString('ro-RO')
+    const r=await fetch('/api/lab'+(q||''),{cache:'no-store'});const d=await r.json();LAST=d;RECV=Date.now();render(d);$('upd').textContent='actualizat '+new Date().toLocaleTimeString('ro-RO')
   }catch(e){$('upd').textContent='fără conexiune'}
 }
 function render(d){
-  const t=d.totals,a=d.auto,c=d.current;
-  const luck=t.tried>1?Math.sqrt(2*Math.log(t.tried)):0;
+  const t=d.totals,a=d.auto,c=d.current;const liveTried=t.tried+(c&&c.tried?c.tried:0);
+  const luck=liveTried>1?Math.sqrt(2*Math.log(liveTried)):0;
   $('top').innerHTML=
    `<div class="card"><div class="k">Stare</div><div class="v" style="font-size:18px"><span class="dot ${a.running?'on':''}"></span>${a.running?'caută':a.on?'pornește':'oprit'}</div><div class="sub">pilot automat ${a.on?'activ':'oprit'} · rulări de ${a.minutes} min</div></div>`+
-   `<div class="card"><div class="k">Variante încercate</div><div class="v">${fmt(t.tried)}</div><div class="sub">în ${fmt(t.runs)} rulări terminate</div></div>`+
-   `<div class="card"><div class="k">Timp de căutare</div><div class="v">${dur(t.secs)}</div><div class="sub">doar rulări terminate</div></div>`+
+   `<div class="card"><div class="k">Variante încercate</div><div class="v">${tw("tried",liveTried)}</div><div class="sub">${fmt(t.runs)} rulări terminate + cea curentă</div></div>`+
+   `<div class="card"><div class="k">Timp de căutare</div><div class="v" data-live="secs">${dur(t.secs)}</div><div class="sub">total, rulează în timp real</div></div>`+
    `<div class="card"><div class="k">Strategii relevante</div><div class="v ${t.relevant?'up':''}">${fmt(t.relevant)}</div><div class="sub">trec toate filtrele + lockbox</div></div>`;
   if(c){const el=d.now-c.started,tot=(c.minutes||30)*60,pc=c.state==='cautare'?Math.min(100,el/tot*100):c.state==='validare'?100:2;
     $('cur').innerHTML=`<div class="k">Rularea curentă</div><div style="margin-top:6px;font-size:15px"><b>${c.sym}</b> · ${c.tf} · <span class="muted">${{'incarc date':'încarcă datele','pregatire':'pregătește datele','cautare':'caută','validare':'validează finaliștii'}[c.state]||c.state}</span></div>
-    <div class="bar"><i style="width:${pc}%"></i></div><div class="sub">${dur(el)} din ${c.minutes||30} min · ${fmt(c.tried)} variante încercate · cel mai bun scor pe train t=${c.best_train_t!=null?c.best_train_t.toFixed(2):'–'} <span class="muted">(din noroc ne-am aștepta la ~${luck?luck.toFixed(1):'–'} după atâtea încercări)</span></div>`}
+    <div class="bar"><i data-live="bar" style="width:${pc}%"></i></div><div class="sub"><span data-live="elapsed">${dur(el)}</span> din ${c.minutes||30} min · ${tw("ctried",c.tried||0)} variante încercate · cel mai bun scor pe train t=${tw("best",Math.round((c.best_train_t||0)*100),v=>(v/100).toFixed(2))} <span class="muted">(din noroc ne-am aștepta la ~${luck?luck.toFixed(1):'–'} după atâtea încercări)</span></div>`}
   else $('cur').innerHTML='<div class="k">Rularea curentă</div><div style="margin-top:6px">'+(a.on?'Se pregătește următoarea rulare…':'Nicio rulare activă (pilotul e oprit).')+'</div>';
   const st=[['Încercate pe train',t.tried],['Trecut validarea',t.val],['Trecut robustețea',t.robust],['Trecut costuri x2',t.cost],['Stabile în timp',t.time],['Trecut simulatorul FTMO',t.ftmo],['Trecut lockbox (relevante)',t.lock]];
   const mx=Math.max(1,t.tried);
@@ -87,5 +99,5 @@ function render(d){
   $('ctl').innerHTML=h+`<div style="margin-top:12px"><button id="tg">${a.on?'Pune pilotul pe pauză':'Pornește pilotul'}</button></div>`;
   $('tg').onclick=()=>load('?do=auto&on='+(a.on?0:1));
 }
-load();setInterval(()=>load(),10000);
+load();setInterval(()=>load(),1500);
 </script></body></html>
