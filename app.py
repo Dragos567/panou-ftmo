@@ -626,11 +626,20 @@ if __name__ == "__main__":
         HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("HIST_YEARS", "3")))
         HIST.start()
     except Exception as e: log("hist init", repr(e))
-    try:
-        from lab.duka import Duka
-        DUKA = Duka(DATA, log, os.environ.get("DUKA_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("DUKA_YEARS", "10")))
-        DUKA.start()
-    except Exception as e: log("duka init", repr(e))
+    def start_duka():
+        global DUKA
+        if _pylibs() not in sys.path: sys.path.insert(0, _pylibs())
+        for _ in range(60):
+            try:
+                import numpy  # noqa
+                from lab.duka import Duka
+                DUKA = Duka(DATA, log, os.environ.get("DUKA_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("DUKA_YEARS", "10")))
+                DUKA.start(); return
+            except ImportError:
+                if LABP.get("setup") != "instalez" and not _have_np(): _setup_libs()
+                time.sleep(30)
+            except Exception as e: log("duka init", repr(e)); return
+    threading.Thread(target=start_duka, daemon=True).start()
     def boot():
         for i in range(30):
             try: bases(); break
