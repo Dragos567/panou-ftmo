@@ -28,7 +28,7 @@ def test_sweep_mss_handmade():
 
 
 def test_no_lookahead():
-    o, h, l, c = walk()
+    o, h, l, c = walk(); T = np.arange(len(c), dtype=np.int64) * 900 + 1_600_000_000; V = np.random.default_rng(5).gamma(2.0, 50, len(c))
     a = feat.atr(h, l, c, 14)
     full = {
         'sw': B.sig_sweep_mss(o, h, l, c, a, 3, 8, 0.1, 0.1),
@@ -36,6 +36,12 @@ def test_no_lookahead():
         'fvg': B.sig_fvg_retest(o, h, l, c, a, 0.2, 40, 1, 0.1, 3, 0, 10),
         'fvgs': B.sig_fvg_retest(o, h, l, c, a, 0.1, 40, 1, 0.1, 3, 1, 10),
         'bo': B.sig_breakout(h, l, c, a, 20),
+        'liq': B.sig_liq_sweep(T, o, h, l, c, a, 0, 0.0, 0.1, 7),
+        'liq1': B.sig_liq_sweep(T, o, h, l, c, a, 1, 0.0, 0.1, 7),
+        'eq': B.equal_levels_sweep(h, l, c, a, 3, 0.5, 0.0, 0.1, 200),
+        'vs': B.sig_vol_spike(o, h, l, c, V, a, 20, 2.0, 0),
+        'vs1': B.sig_vol_spike(o, h, l, c, V, a, 20, 2.0, 1),
+        'dd': B.sig_delta_div(o, h, l, c, V, a, 20, 10),
     }
     for name, (s, d) in full.items():
         assert (s != 0).sum() > 3, name + ' prea putine semnale: ' + str((s != 0).sum())
@@ -47,6 +53,12 @@ def test_no_lookahead():
             'fvg': B.sig_fvg_retest(o2, h2, l2, c2, a2, 0.2, 40, 1, 0.1, 3, 0, 10),
             'fvgs': B.sig_fvg_retest(o2, h2, l2, c2, a2, 0.1, 40, 1, 0.1, 3, 1, 10),
             'bo': B.sig_breakout(h2, l2, c2, a2, 20),
+            'liq': B.sig_liq_sweep(T[:cut], o2, h2, l2, c2, a2, 0, 0.0, 0.1, 7),
+            'liq1': B.sig_liq_sweep(T[:cut], o2, h2, l2, c2, a2, 1, 0.0, 0.1, 7),
+            'eq': B.equal_levels_sweep(h2, l2, c2, a2, 3, 0.5, 0.0, 0.1, 200),
+            'vs': B.sig_vol_spike(o2, h2, l2, c2, V[:cut], a2, 20, 2.0, 0),
+            'vs1': B.sig_vol_spike(o2, h2, l2, c2, V[:cut], a2, 20, 2.0, 1),
+            'dd': B.sig_delta_div(o2, h2, l2, c2, V[:cut], a2, 20, 10),
         }
         for name in full:
             assert np.array_equal(full[name][0][:cut], part[name][0]), (name, cut)

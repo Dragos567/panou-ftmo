@@ -54,6 +54,10 @@ class Ctx:
         elif blk == "breakout": r = B.sig_breakout(h, l, c, a, p["n"])
         elif blk == "pullback":
             r = B.sig_pullback(c, a, feat.ema(c, p["fast"]), feat.ema(c, p["slow"]), feat.rsi(c, p["rsi_n"]), p["lvl"])
+        elif blk == "liq_sweep": r = B.sig_liq_sweep(self.t, o, h, l, c, a, p["mode"], p["min_sweep"], p["buf"], p["asia_end"])
+        elif blk == "equal_hl": r = B.equal_levels_sweep(h, l, c, a, p["n_piv"], p["tol"], p["min_sweep"], p["buf"], p["win"])
+        elif blk == "vol_spike": r = B.sig_vol_spike(o, h, l, c, self.v.astype(np.float64), a, p["n"], p["k"], p["mode"])
+        elif blk == "delta_div": r = B.sig_delta_div(o, h, l, c, self.v.astype(np.float64), a, p["n"], p["m"])
         else: raise ValueError(blk)
         if len(self.cache) > 400: self.cache.clear()
         self.cache[key] = r; return r
@@ -65,6 +69,10 @@ SPACE = {
     "ob": {"n_piv": [2, 3, 5], "disp": [0.8, 1.2, 1.6, 2.2], "lookback": [4, 8, 14], "max_age": [20, 60, 150], "reject": [0, 1], "buf": [0.0, 0.1, 0.3], "full": [0, 1]},
     "fvg": {"gap": [0.1, 0.2, 0.4, 0.7], "max_age": [10, 30, 80], "reject": [0, 1], "buf": [0.0, 0.1, 0.3], "n_piv": [2, 3, 5], "sweep": [0, 1], "sweep_win": [6, 12, 24]},
     "breakout": {"n": [10, 20, 40, 80, 160]},
+    "liq_sweep": {"mode": [0, 1], "min_sweep": [0.0, 0.1, 0.3], "buf": [0.0, 0.1, 0.3], "asia_end": [6, 7, 8]},
+    "equal_hl": {"n_piv": [2, 3, 5], "tol": [0.1, 0.25, 0.5], "min_sweep": [0.0, 0.1, 0.3], "buf": [0.0, 0.1, 0.3], "win": [60, 150, 400]},
+    "vol_spike": {"n": [20, 50, 100], "k": [2.0, 3.0, 4.0], "mode": [0, 1]},
+    "delta_div": {"n": [10, 20, 40], "m": [5, 10, 20]},
     "pullback": {"fast": [8, 13, 21], "slow": [34, 55, 89], "rsi_n": [7, 14], "lvl": [30, 40, 45]},
 }
 COMMON = {"sl_mult": [0.7, 1.0, 1.5, 2.0], "tp_r": [1.0, 1.5, 2.0, 3.0], "hold": [24, 72, 200],

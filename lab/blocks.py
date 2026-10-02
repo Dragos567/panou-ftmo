@@ -196,3 +196,117 @@ def hour_mask(t, h0, h1):
 
 def apply_mask(sig, sd, mask):
     s = sig.copy(); s[~mask] = 0; return s, sd
+
+
+# ---------------- lichiditate si sesiuni ----------------
+@njit(cache=True)
+def sig_liq_sweep(t, o, h, l, c, a, mode, min_sweep_atr, buf_atr, asia_end):
+    """Sweep de lichiditate pe nivele cunoscute: mode 0 = maximul/minimul zilei UTC precedente (PDH/PDL); mode 1 = intervalul sesiunii asiatice
+    (00:00-asia_end UTC) din ziua curenta, tranzactionat doar dupa terminarea ei. Fitil dincolo de nivel + inchidere inapoi in interior -> semnal invers."""
+    N = len(c); sig = np.zeros(N, np.int8); sd = np.zeros(N)
+    cur = -1; dh = -1e300; dl = 1e300; ph = np.nan; pl = np.nan; ah = -1e300; al = 1e300
+    for j in range(N):
+        d = t[j] // 86400
+        if d != cur:
+            if cur >= 0: ph = dh; pl = dl
+            cur = d; dh = -1e300; dl = 1e300; ah = -1e300; al = 1e300
+        hr = (t[j] % 86400) // 3600
+        if np.isnan(a[j]):
+            dh = max(dh, h[j]); dl = min(dl, l[j]); continue
+        lh = np.nan; ll = np.nan
+        if mode == 0: lh = ph; ll = pl
+        elif hr >= asia_end and ah > -1e299: lh = ah; ll = al
+        if not np.isnan(lh):
+            if h[j] > lh and c[j] < lh and (h[j] - lh) >= min_sweep_atr * a[j]:
+                dd = (h[j] + buf_atr * a[j]) - c[j]
+                if dd >= 0.3 * a[j]: sig[j] = -1; sd[j] = dd
+            elif l[j] < ll and c[j] > ll and (ll - l[j]) >= min_sweep_atr * a[j]:
+                dd = c[j] - (l[j] - buf_atr * a[j])
+                if dd >= 0.3 * a[j]: sig[j] = 1; sd[j] = dd
+        dh = max(dh, h[j]); dl = min(dl, l[j])
+        if hr < asia_end: ah = max(ah, h[j]); al = min(al, l[j])
+    return sig, sd
+
+
+@njit(cache=True)
+def equal_levels_sweep(h, l, c, a, n_piv, tol_atr, min_sweep_atr, buf_atr, win):
+    """Maxime/minime egale (doua pivoti in tol_atr*ATR unul de altul = lichiditate acumulata) sparte printr-un fitil si respinse."""
+    N = len(c); sig = np.zeros(N, np.int8); sd = np.zeros(N)
+    ph = np.full(8, np.nan); pl = np.full(8, np.nan); phi = np.full(8, -1); pli = np.full(8, -1)
+    nh = 0; nl = 0
+    for j in range(2 * n_piv + 1, N):
+        p = j - n_piv
+        ok = True
+        for k in range(1, n_piv + 1):
+            if not (h[p] > h[p - k]) or not (h[p] >= h[p + k]): ok = False; break
+        if ok:
+            ph[nh % 8] = h[p]; phi[nh % 8] = p; nh += 1
+        ok = True
+        for k in range(1, n_piv + 1):
+            if not (l[p] < l[p - k]) or not (l[p] <= l[p + k]): ok = False; break
+        if ok:
+            pl[nl % 8] = l[p]; pli[nl % 8] = p; nl += 1
+        if np.isnan(a[j]): continue
+        # nivel de maxime egale: cel mai recent maxim cu un altul din apropiere
+        for x in range(8):
+            if phi[x] < 0 or j - phi[x] > win: continue
+            for y in range(8):
+                if y != x and phi[y] >= 0 and phi[y] < phi[x] and abs(ph[y] - ph[x]) <= tol_atr * a[j]:
+                    lv = max(ph[x], ph[y])
+                    if h[j] > lv and c[j] < lv and (h[j] - lv) >= min_sweep_atr * a[j] and phi[x] < j - 1:
+                        dd = (h[j] + buf_atr * a[j]) - c[j]
+                        if dd >= 0.3 * a[j]: sig[j] = -1; sd[j] = dd
+        for x in range(8):
+            if pli[x] < 0 or j - pli[x] > win: continue
+            for y in range(8):
+                if y != x and pli[y] >= 0 and pli[y] < pli[x] and abs(pl[y] - pl[x]) <= tol_atr * a[j]:
+                    lv = min(pl[x], pl[y])
+                    if l[j] < lv and c[j] > lv and (lv - l[j]) >= min_sweep_atr * a[j] and pli[x] < j - 1 and sig[j] == 0:
+                        dd = c[j] - (l[j] - buf_atr * a[j])
+                        if dd >= 0.3 * a[j]: sig[j] = 1; sd[j] = dd
+    return sig, sd
+
+
+# ---------------- proxy-uri de order flow (din tick volume; NU sunt order flow real) ----------------
+@njit(cache=True)
+def sig_vol_spike(o, h, l, c, v, a, n, k, mode):
+    """Spike de tick-volum (v > k * media ultimelor n bare). mode 0 = continuare in directia barei; mode 1 = climax: bara cu spike si fitil mare
+    de respingere (inchidere in treimea opusa) -> semnal invers."""
+    N = len(c); sig = np.zeros(N, np.int8); sd = np.zeros(N)
+    for j in range(n + 1, N):
+        if np.isnan(a[j]): continue
+        s = 0.0
+        for q in range(j - n, j): s += v[q]
+        m = s / n
+        if m <= 0 or v[j] < k * m: continue
+        rng = h[j] - l[j]
+        if rng <= 0: continue
+        loc = (c[j] - l[j]) / rng
+        if mode == 0:
+            if c[j] > o[j] and loc > 0.7: sig[j] = 1; sd[j] = max(c[j] - l[j], 0.5 * a[j])
+            elif c[j] < o[j] and loc < 0.3: sig[j] = -1; sd[j] = max(h[j] - c[j], 0.5 * a[j])
+        else:
+            if loc > 0.66 and l[j] < l[j - 1] and rng >= 0.8 * a[j]: sig[j] = 1; sd[j] = max(c[j] - l[j], 0.5 * a[j])
+            elif loc < 0.34 and h[j] > h[j - 1] and rng >= 0.8 * a[j]: sig[j] = -1; sd[j] = max(h[j] - c[j], 0.5 * a[j])
+    return sig, sd
+
+
+@njit(cache=True)
+def sig_delta_div(o, h, l, c, v, a, n, m):
+    """Divergenta de volum semnat (proxy de delta: v * pozitia inchiderii in bara): pret la maxim/minim pe n bare, dar delta cumulata pe m bare
+    e de semn opus -> semnal invers, cu confirmarea inchiderii barei."""
+    N = len(c); sig = np.zeros(N, np.int8); sd = np.zeros(N)
+    dl = np.zeros(N)
+    for j in range(N):
+        r = h[j] - l[j]; dl[j] = v[j] * (2.0 * (c[j] - l[j]) / r - 1.0) if r > 0 else 0.0
+    for j in range(max(n, m) + 1, N):
+        if np.isnan(a[j]): continue
+        s = 0.0
+        for q in range(j - m + 1, j + 1): s += dl[q]
+        hi = h[j - n]; lo = l[j - n]
+        for q in range(j - n, j):
+            if h[q] > hi: hi = h[q]
+            if l[q] < lo: lo = l[q]
+        if h[j] > hi and s < 0 and c[j] < o[j]: sig[j] = -1; sd[j] = max(h[j] - c[j], 0.5 * a[j]) + 0.1 * a[j]
+        elif l[j] < lo and s > 0 and c[j] > o[j]: sig[j] = 1; sd[j] = max(c[j] - l[j], 0.5 * a[j]) + 0.1 * a[j]
+    return sig, sd
