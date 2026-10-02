@@ -501,7 +501,7 @@ def lab_api(qs):
         LABP["proc"] = subprocess.Popen(["nice", "-n", "10", sys.executable, "-m", "lab.run", "--data", DATA, "--sym", sy, "--tf", tf, "--minutes", mi, "--seed", sd],
                                         cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, "lab.log"), "ab"), stderr=subprocess.STDOUT)
         return {"started": True, "sym": sy, "tf": tf, "minutes": mi}
-    jobs = sorted(os.listdir(lab)) if os.path.isdir(lab) else []
+    jobs = sorted(d for d in os.listdir(lab) if os.path.isdir(os.path.join(lab, d))) if os.path.isdir(lab) else []
     job = qs.get("job", [jobs[-1] if jobs else ""])[0]
     out = {"jobs": jobs[-10:], "setup": LABP.get("setup"), "numpy": _have_np() if qs.get("chk") else None}
     if job:
@@ -543,10 +543,10 @@ def autopilot():
                 except Exception: pass
             n = cfg.get("n", 0); sy = cfg.get("syms", ["EURUSD", "NIKKEI"])[n % len(cfg.get("syms", ["EURUSD", "NIKKEI"]))]
             tf = cfg.get("tfs", ["5m", "15m"])[(n // 2) % len(cfg.get("tfs", ["5m", "15m"]))]
-            before = set(os.listdir(os.path.join(DATA, "lab"))) if os.path.isdir(os.path.join(DATA, "lab")) else set()
+            before = set(d for d in os.listdir(os.path.join(DATA, "lab")) if os.path.isdir(os.path.join(DATA, "lab", d))) if os.path.isdir(os.path.join(DATA, "lab")) else set()
             lab_api({"do": ["start"], "sym": [sy], "tf": [tf], "min": [str(cfg.get("minutes", 30))], "seed": [str(1000 + n)]})
             time.sleep(5)
-            new = sorted(set(os.listdir(os.path.join(DATA, "lab"))) - before)
+            new = sorted(set(d for d in os.listdir(os.path.join(DATA, "lab")) if os.path.isdir(os.path.join(DATA, "lab", d))) - before)
             cfg["n"] = n + 1; cfg["last_job"] = new[-1] if new else None; json.dump(cfg, open(ctl, "w"))
         except FileNotFoundError: pass
         except Exception as e: log("autopilot", repr(e))
