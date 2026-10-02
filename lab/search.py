@@ -149,14 +149,20 @@ def search(ctx, budget_s, seed=1, min_n=80, pop=300, progress=None, blocks=None)
         k = key_of(g)
         if k in seen: return
         r, _, _ = trades(ctx, g, "train"); seen[k] = (fitness(r, min_n), len(r), float(np.mean(r)) if len(r) else 0.0, g)
-    phase = 0
+    phase = 0; top = []
+    def fresh(top):
+        # mutatie din cei mai buni; daca varianta exista deja, mai incearca; la nevoie, esantion aleator nou (altfel cautarea se blocheaza pe vecinatati epuizate)
+        for _ in range(30):
+            g = mutate(top[rng.integers(len(top))][3], rng, 1 + int(rng.integers(3)))
+            if key_of(g) not in seen: return g
+        return random_genome(rng, blocks)
     while time.time() - t0 < budget_s:
-        if phase == 0 or len(seen) < pop:
-            for _ in range(50): ev(random_genome(rng, blocks))
-        else:
-            top = sorted(seen.values(), key=lambda x: -x[0])[:max(10, pop // 10)]
-            for _ in range(50):
-                ev(mutate(top[rng.integers(len(top))][3], rng, 1 + int(rng.integers(2))))
+        if phase % 20 == 0 and len(seen) >= pop:
+            top = sorted(seen.values(), key=lambda x: -x[0])[:max(30, len(seen) // 50)]
+        n0 = len(seen)
+        for _ in range(50):
+            if not top or rng.random() < 0.3: ev(random_genome(rng, blocks))
+            else: ev(fresh(top))
         phase += 1
         if progress and phase % 2 == 0: progress(len(seen), time.time() - t0, max((v[0] for v in seen.values()), default=0))
     res = sorted(seen.values(), key=lambda x: -x[0])
