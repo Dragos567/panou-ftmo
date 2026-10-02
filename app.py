@@ -480,6 +480,16 @@ def _setup_libs():
     threading.Thread(target=go, daemon=True).start()
 def lab_api(qs):
     lab = os.path.join(DATA, "lab"); act = qs.get("do", [""])[0]
+    if act == "auto":
+        os.makedirs(lab, exist_ok=True); cp = os.path.join(lab, "auto.json")
+        try: cfg = json.load(open(cp))
+        except Exception: cfg = {}
+        if "on" in qs: cfg["on"] = qs["on"][0] == "1"
+        if "min" in qs: cfg["minutes"] = float(qs["min"][0])
+        if "ntfy" in qs: open(os.path.join(lab, "ntfy.txt"), "w").write(qs["ntfy"][0])
+        json.dump(cfg, open(cp, "w")); return {"auto": cfg}
+    if act == "ntfytest":
+        ntfy("Altrix test", "Daca vezi asta, notificarile merg."); return {"sent": True}
     if act == "setup":
         if LABP.get("setup") != "instalez": _setup_libs()
         return {"setup": LABP.get("setup")}
@@ -502,6 +512,45 @@ def lab_api(qs):
             r = out["result"]; r["finalists"] = [{k: f.get(k) for k in ("genome", "train", "val", "robust", "cost_x2_avg_r", "blocks_pos", "ftmo", "lock", "fail", "stages")} for f in r["finalists"][:12]]
     return out
 
+# ---------- Pilot automat: cauta in bucla pana apare ceva relevant, apoi anunta pe telefon (ntfy) ----------
+def ntfy(title, msg):
+    try:
+        tp = open(os.path.join(DATA, "lab", "ntfy.txt")).read().strip()
+        if tp: urllib.request.urlopen(urllib.request.Request("https://ntfy.sh/" + tp, data=msg.encode("utf-8"), headers={"Title": title}), timeout=15)
+    except Exception as e: log("ntfy", repr(e))
+def autopilot():
+    ctl = os.path.join(DATA, "lab", "auto.json"); n = 0
+    while True:
+        time.sleep(30)
+        try:
+            cfg = json.load(open(ctl))
+            if not cfg.get("on"): continue
+            p = LABP.get("proc")
+            if p and p.poll() is None: continue
+            if not _have_np(): _setup_libs(); time.sleep(120); continue
+            st = HIST.status() if HIST else {}
+            if any(not (st.get(s) or {}).get("done_back") for s in ("EURUSD", "NIKKEI") if s in st): continue
+            last = cfg.get("last_job")
+            if last:
+                try:
+                    r = json.load(open(os.path.join(DATA, "lab", last, "status.json")))
+                    if r.get("state") == "gata" and r.get("relevant", 0) > 0 and last not in cfg.get("notified", []):
+                        ntfy("Altrix: strategie relevanta", "Cautarea %s a gasit %d strategie(i) care trec toate verificarile, inclusiv lockbox. Deschide Altrix > Laborator." % (last, r["relevant"]))
+                        cfg.setdefault("notified", []).append(last); cfg["found"] = cfg.get("found", 0) + r["relevant"]
+                        if cfg.get("stop_on_find", True): cfg["on"] = False
+                        json.dump(cfg, open(ctl, "w"))
+                        if not cfg["on"]: continue
+                except Exception: pass
+            n = cfg.get("n", 0); sy = cfg.get("syms", ["EURUSD", "NIKKEI"])[n % len(cfg.get("syms", ["EURUSD", "NIKKEI"]))]
+            tf = cfg.get("tfs", ["5m", "15m"])[(n // 2) % len(cfg.get("tfs", ["5m", "15m"]))]
+            before = set(os.listdir(os.path.join(DATA, "lab"))) if os.path.isdir(os.path.join(DATA, "lab")) else set()
+            lab_api({"do": ["start"], "sym": [sy], "tf": [tf], "min": [str(cfg.get("minutes", 30))], "seed": [str(1000 + n)]})
+            time.sleep(5)
+            new = sorted(set(os.listdir(os.path.join(DATA, "lab"))) - before)
+            cfg["n"] = n + 1; cfg["last_job"] = new[-1] if new else None; json.dump(cfg, open(ctl, "w"))
+        except FileNotFoundError: pass
+        except Exception as e: log("autopilot", repr(e))
+
 HIST = None
 if __name__ == "__main__":
     load_disk()
@@ -517,6 +566,7 @@ if __name__ == "__main__":
         backfill_all()
     threading.Thread(target=boot, daemon=True).start()
     start_quotes()
+    threading.Thread(target=autopilot, daemon=True).start()
     if os.path.exists(CFGP): threading.Thread(target=updater, daemon=True).start()
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), H); srv.daemon_threads = True
     print("Panou FTMO pornit pe", PORT, flush=True)

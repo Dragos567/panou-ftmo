@@ -156,7 +156,7 @@ def search(ctx, budget_s, seed=1, min_n=80, pop=300, progress=None, blocks=None)
 
 
 # ---------------- palnia de validare ----------------
-def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_lock=True, log=lambda *a: None):
+def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_lock=True, log=lambda *a: None, prior_k=0, prior_lock=0):
     """cands: rezultate de la search (fitness, n, avg, genom), cele mai bune primele. Fiecare etapa elimina; se pastreaza motivul."""
     out = []; finals = []; seen_p = set()
     for c_ in cands:                                   # diversitate: cel mult o varianta pe (bloc, parametri de semnal)
@@ -165,7 +165,7 @@ def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_loc
         seen_p.add(kp); finals.append(c_)
         if len(finals) >= k_final: break
     K = len(finals)
-    zval = zcrit(alpha / max(K, 1))
+    zval = zcrit(alpha / max(K + prior_k, 1))   # prior_k = finalisti deja testati in rulari anterioare (corectie cumulata)
     for fit, n_tr, avg_tr, g in finals:
         rec = {"genome": _norm(g), "train": {"n": n_tr, "avg_r": avg_tr, "t": fit}, "stages": {}}
         out.append(rec)
@@ -205,7 +205,7 @@ def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_loc
     # 6) lockbox, o singura data, doar pe supravietuitori (corectie pentru numarul lor)
     surv = [x for x in out if x["stages"].get("ftmo")]
     if use_lock and surv:
-        zl = zcrit(alpha / len(surv))
+        zl = zcrit(alpha / (len(surv) + prior_lock))
         for x in surv:
             rl, dl, _ = trades(ctx, x["genome"], "lock"); tl = tstat(rl)
             x["lock"] = {"n": len(rl), "avg_r": float(np.mean(rl)) if len(rl) else 0.0, "t": tl, "thr": zl}
