@@ -173,17 +173,20 @@ def _qone(s):
             with SLOCK: h = STORE.get((s, "1h")) or STORE.get((s, "15m")) or STORE.get((s, "5m"))
             prev = prev_24h(h) if h else (_qc["v"].get(s) or {}).get("prev")
             with _ql: _qc["v"][s] = {"price": p["bid"], "prev": prev}; _qc["t"] = time.time()
-        except Exception:
+        except Exception as e:
             if s not in _qc["v"]:
                 f = _fallback(s)
                 if f:
                     with _ql: _qc["v"][s] = f
-            time.sleep(2)
-        time.sleep(1.0)
+            time.sleep(90 if "429" in str(e) else 2)     # limita MetaApi (credite CPU): rasufla
+        # cat timp nu se uita nimeni la pret, intreaba rar (economiseste creditele MetaApi)
+        time.sleep(1.0 if time.time() - _QSEEN["t"] < 45 else 20.0)
+_QSEEN = {"t": 0.0}
 def start_quotes():
     for s in SYMS: threading.Thread(target=_qone, args=(s,), daemon=True).start()
 def get_quotes():
     # raspuns instant din memorie; completeaza lipsurile din STORE
+    _QSEEN["t"] = time.time()
     with _ql: out = dict(_qc["v"])
     for s in SYMS:
         if s not in out:
@@ -533,6 +536,19 @@ def autopilot():
             p = LABP.get("proc")
             if p and p.poll() is None: continue
             if not _have_np(): _setup_libs(); time.sleep(120); continue
+            # job intrerupt de o repornire a serverului -> termina-l (doar validare, din checkpoint) in loc sa piarda cautarea
+            labd = os.path.join(DATA, "lab")
+            for jb in sorted(d for d in os.listdir(labd) if os.path.isdir(os.path.join(labd, d))):
+                try:
+                    stj = json.load(open(os.path.join(labd, jb, "status.json")))
+                    if stj.get("state") in ("cautare", "validare", "pregatire", "incarc date") and time.time() - stj.get("updated", 0) > 90 and os.path.exists(os.path.join(labd, jb, "ckpt.json")) and not stj.get("recovered"):
+                        stj["recovered"] = True; stj["state"] = "reluat"; json.dump(stj, open(os.path.join(labd, jb, "status.json"), "w"))
+                        LABP["proc"] = subprocess.Popen(["nice", "-n", "10", sys.executable, "-m", "lab.run", "--data", DATA, "--sym", stj["sym"], "--tf", stj["tf"], "--finish", jb],
+                                                        cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, "lab.log"), "ab"), stderr=subprocess.STDOUT)
+                        cfg["last_job"] = jb; json.dump(cfg, open(ctl, "w")); break
+                except Exception: pass
+            p = LABP.get("proc")
+            if p and p.poll() is None: continue
             st = HIST.status() if HIST else {}
             if any(not (st.get(s) or {}).get("done_back") for s in ("EURUSD", "NIKKEI") if s in st): continue
             last = cfg.get("last_job")
@@ -571,6 +587,7 @@ def lab_summary(qs):
         try: st = json.load(open(os.path.join(lab, j, "status.json")))
         except Exception: continue
         r = {k: st.get(k) for k in ("job", "sym", "tf", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error", "live_top", "validation", "finalists")}
+        if st.get("state") in ("cautare", "validare", "pregatire", "incarc date") and time.time() - (st.get("updated") or 0) > 120: r["state"] = "întreruptă"
         rows.append(r)
         if st.get("state") == "gata":
             tot["runs"] += 1; tot["tried"] += st.get("tried") or 0; tot["relevant"] += st.get("relevant") or 0; tot["secs"] += st.get("elapsed") or 0; tot["fin"] += st.get("finalists") or 0

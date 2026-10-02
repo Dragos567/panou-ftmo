@@ -23,11 +23,11 @@ def load_m1(data_dir, sym):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--data", required=True); ap.add_argument("--sym", default="EURUSD")
     ap.add_argument("--tf", default="5m"); ap.add_argument("--minutes", type=float, default=10); ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--job", default=None); a = ap.parse_args()
+    ap.add_argument("--job", default=None); ap.add_argument("--finish", default=None); a = ap.parse_args()
     from . import search as S
-    job = a.job or time.strftime("%Y%m%d_%H%M%S") + "_%s_%s" % (a.sym, a.tf)
+    job = a.finish or a.job or time.strftime("%Y%m%d_%H%M%S") + "_%s_%s" % (a.sym, a.tf)
     out = os.path.join(a.data, "lab", job); os.makedirs(out, exist_ok=True)
-    st = {"job": job, "sym": a.sym, "tf": a.tf, "state": "incarc date", "started": int(time.time()), "costs_provizorii": True, "minutes": a.minutes}
+    st = json.load(open(os.path.join(out, "status.json"))) if a.finish else {"job": job, "sym": a.sym, "tf": a.tf, "state": "incarc date", "started": int(time.time()), "costs_provizorii": True, "minutes": a.minutes}
     def save(**kw):
         st.update(kw); st["updated"] = int(time.time())
         json.dump(st, open(os.path.join(out, "status.json.tmp"), "w")); os.replace(os.path.join(out, "status.json.tmp"), os.path.join(out, "status.json"))
@@ -37,7 +37,11 @@ def main():
         iso = lambda x: time.strftime("%Y-%m-%d", time.gmtime(int(x)))
         save(state="pregatire", bars_m1=int(len(m1["t"])), first=iso(m1["t"][0]), last=iso(m1["t"][-1]))
         ctx = S.Ctx(m1, a.tf, cost_price=c, slip_price=s)
-        save(state="cautare", segments={k: [iso(ctx.t[x[0]]), iso(ctx.t[min(x[1], ctx.n) - 1])] for k, x in ctx.seg.items()})
+        if a.finish:
+            ck = json.load(open(os.path.join(out, "ckpt.json")))
+            res = [(c["fit"], c["n"], c["avg"], c["g"]) for c in ck]; ntr = int(st.get("tried") or len(res))
+            save(state="validare", candidates=len(res), validation={"stage": "pregatire", "i": 0, "K": 25}, recovered=True)
+        else: save(state="cautare", segments={k: [iso(ctx.t[x[0]]), iso(ctx.t[min(x[1], ctx.n) - 1])] for k, x in ctx.seg.items()})
         live = {"t": 0.0}
         def prog(n, el, best, seen=None):
             kw = dict(tried=int(n), elapsed=int(el), best_train_t=float(best))
@@ -51,8 +55,12 @@ def main():
                                 "avg_val": float(np.mean(rv)) if len(rv) else 0.0, "t_val": float(S.tstat(rv))})
                     if len(top) >= 8: break
                 kw["live_top"] = top
+            if seen is not None and time.time() - live.get("ck", 0) > 45:      # punct de control: daca serverul reporneste, validarea se face din el
+                live["ck"] = time.time()
+                best = sorted(seen.values(), key=lambda x: -x[0])[:300]
+                tmp = os.path.join(out, "ckpt.tmp"); json.dump([{"fit": float(f), "n": int(nn), "avg": float(av), "g": S._norm(g)} for f, nn, av, g in best], open(tmp, "w")); os.replace(tmp, os.path.join(out, "ckpt.json"))
             save(**kw)
-        res, ntr = S.search(ctx, a.minutes * 60, seed=a.seed, progress=prog)
+        if not a.finish: res, ntr = S.search(ctx, a.minutes * 60, seed=a.seed, progress=prog)
         save(state="validare", tried=int(ntr), candidates=len(res), validation={"stage": "pregatire", "i": 0, "K": 25})
         cp = os.path.join(a.data, "lab", "cum_%s_%s.json" % (a.sym, a.tf))
         try: cum = json.load(open(cp))
