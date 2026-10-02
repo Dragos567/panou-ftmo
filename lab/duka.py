@@ -33,20 +33,23 @@ def hour_to_m1(raw, scale, hour_start):
     return out
 
 
-def fetch(url, tries=5):
+_SEM = threading.Semaphore(4)   # cel mult 4 cereri simultane in total (Dukascopy raspunde 503 cand e suprasolicitat)
+
+
+def fetch(url, tries=7):
     last = None
     for k in range(tries):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=25) as r: return r.read()
+            with _SEM, urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=25) as r: return r.read()
         except urllib.error.HTTPError as e:
             if e.code == 404: return b""
-            last = e; time.sleep(2 + 3 * k)
-        except Exception as e: last = e; time.sleep(2 + 3 * k)
+            last = e; time.sleep(5 * (k + 1))
+        except Exception as e: last = e; time.sleep(5 * (k + 1))
     raise RuntimeError("descarcare esuata: %s (%r)" % (url, last))
 
 
 class Duka:
-    def __init__(self, data_dir, log, syms, years=10.0, workers=6):
+    def __init__(self, data_dir, log, syms, years=10.0, workers=4):
         self.dir = os.path.join(data_dir, "duka"); os.makedirs(self.dir, exist_ok=True)
         self.log, self.syms, self.years, self.workers = log, [s for s in syms if s in MAP], float(years), workers
         self.st = {s: {"state": "pornire", "days_done": 0, "days_total": 0, "newest": None, "oldest": None, "err": None, "updated": None, "sample_close": None} for s in self.syms}
@@ -73,8 +76,8 @@ class Duka:
 
     def _run(self, s):
         while True:
-            self._once(s)
-            time.sleep(6 * 3600)          # dupa ce e complet, adauga zilele noi la fiecare 6 ore
+            ok = self._once(s)
+            time.sleep(6 * 3600 if ok else 120)    # complet: zile noi la 6 ore; esec: reia peste 2 minute (continua de unde a ramas)
 
     def _once(self, s):
         try:
@@ -94,9 +97,10 @@ class Duka:
                 if len(a): kw["sample_close"] = float(a["c"][-1]); kw["sample_day"] = d.isoformat()
                 if self.st[s]["newest"] is None: kw["newest"] = d.isoformat()
                 self._set(s, **kw)
-            self._set(s, state="complet"); open(os.path.join(self.sdir(s), "state.txt"), "w").write(str(int(time.time())))
+            self._set(s, state="complet", err=None); open(os.path.join(self.sdir(s), "state.txt"), "w").write(str(int(time.time())))
+            return True
         except Exception as e:
-            self.log("duka", s, repr(e)); self._set(s, state="eroare", err=repr(e)[:300])
+            self.log("duka", s, repr(e)); self._set(s, state="reincerc", err=repr(e)[:300]); return False
 
     def status(self):
         with self.lock: return {s: dict(v) for s, v in self.st.items()}

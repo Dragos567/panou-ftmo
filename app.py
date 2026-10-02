@@ -553,7 +553,7 @@ def autopilot():
             ds = DUKA.status() if DUKA else {}; hs = HIST.status() if HIST else {}
             def ready(sy):   # Dukascopy complet, sau (daca a esuat) istoricul MetaApi complet
                 if (ds.get(sy) or {}).get("state") == "complet": return True
-                if (ds.get(sy) or {}).get("state") in ("eroare", None) and (hs.get(sy) or {}).get("done_back"): return True
+                if (ds.get(sy) or {}).get("state") is None and (hs.get(sy) or {}).get("done_back"): return True
                 return False
             symsok = [x for x in cfg.get("syms", ["EURUSD", "NIKKEI"]) if ready(x)]
             if not symsok: continue
