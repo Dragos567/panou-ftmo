@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Altrix · Acasă</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: bară sus (instrument + timeframe), grafic mare la stânga, decizie + poziție + risc FTMO la dreapta, știri dedesubt */
+:root{
+  --bg:#0b0f14; --panel:#121820; --panel2:#0f141b; --line:#1f2935; --text:#d6dde7; --muted:#7c8a9b;
+  --up:#33c48d; --down:#ef5b6b; --warn:#e0a93b; --accent:#6ea8fe; --ma50:#e0a93b; --ma100:#6ea8fe; --ma200:#c084fc;
+  --font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 var(--font);padding-inline:16px;padding-block:12px 40px;max-width:1600px;margin-inline:auto}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.up{color:var(--up)} .down{color:var(--down)} .warn{color:var(--warn)}
+
+.top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.brand{font-weight:600;letter-spacing:.02em;margin-right:6px}
+.brand small{display:block;font-weight:400;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;text-align:left;min-width:0}
+.tab[aria-pressed="true"]{border-color:var(--warn);background:#1a1710}
+.tab .n{display:block;font-size:12px;font-weight:600}
+.tab .p{display:block;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.tab .p i{font-style:normal;margin-left:6px;font-size:11px}
+.tf{padding:6px 12px;font-family:var(--mono);font-size:13px;text-align:center}
+.nav{display:flex;gap:6px}
+.nav a{padding:6px 10px;border:1px solid var(--line);border-radius:6px;color:var(--muted);text-decoration:none;font-size:13px}
+.nav a[aria-current]{color:var(--text);border-color:var(--warn);background:#1a1710}
+.status{margin-left:auto;text-align:right;font-size:12px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--up);margin-right:6px}
+.dot.bad{background:var(--down)} .dot.old{background:var(--warn)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 430px;gap:16px;margin-top:14px;align-items:start}
+@media (max-width:1100px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+.card h2{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+.phead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin-bottom:6px}
+.phead .big{font-family:var(--mono);font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.phead .nm{font-size:16px;font-weight:600}
+.readout{font-family:var(--mono);font-size:11.5px;color:var(--muted);min-height:34px;display:flex;flex-wrap:wrap;gap:2px 14px;margin-bottom:6px}
+.readout b{font-weight:500;color:var(--text)}
+.charts{position:relative;touch-action:pan-y;user-select:none;cursor:crosshair}
+.charts canvas{display:block;width:100%}
+.ctl{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.ctl button,.ctl select{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:3px 9px}
+.ctl label{display:flex;gap:5px;align-items:center}
+
+.verdict{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:6px;border:1px solid var(--line);background:var(--panel2)}
+.verdict .tag{font-family:var(--mono);font-weight:600;font-size:13px;padding:4px 9px;border-radius:4px;white-space:nowrap}
+.tag.long{background:rgba(51,196,141,.15);color:var(--up)} .tag.short{background:rgba(239,91,107,.15);color:var(--down)} .tag.flat{background:rgba(124,138,155,.15);color:var(--muted)}
+.verdict h3{margin:0 0 2px;font-size:15px}
+.verdict p{margin:0;color:var(--muted);font-size:13px}
+.v-good{border-color:var(--up)} .v-ok{border-color:var(--warn)} .v-wait{border-color:var(--warn)} .v-no{border-color:var(--line)}
+.meter{position:relative;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--down),#2a3441 50%,var(--up));margin:14px 0 4px}
+.meter i{position:absolute;top:-4px;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)}
+.meterlab{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+td,th{padding:5px 0;text-align:left;font-weight:400;border-bottom:1px solid var(--line);vertical-align:top}
+td:last-child,th:last-child{text-align:right}
+tr:last-child td{border-bottom:0}
+.plan td:nth-child(2){text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.plan td:last-child{color:var(--muted);font-size:12px;text-align:right}
+.chip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);margin-left:6px}
+.chip.b{color:var(--up);border-color:rgba(51,196,141,.4)} .chip.s{color:var(--down);border-color:rgba(239,91,107,.4)} .chip.n{color:var(--muted)} .chip.w{color:var(--warn);border-color:rgba(224,169,59,.4)}
+ul.why{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:13px}
+ul.why li{margin:2px 0}
+.stat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.stat div{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px}
+.stat .k{font-size:11px;color:var(--muted)} .stat .v{font-family:var(--mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--muted);min-width:0}
+.form .full{grid-column:1/-1}
+.form input,.form select{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:7px 8px;width:100%;min-width:0;font-family:var(--mono);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 12px;font-size:13px}
+.btn.pri{background:var(--warn);color:#15110a;border-color:var(--warn);font-weight:600}
+.btn:hover{border-color:var(--muted)}
+.out{margin-top:12px}
+.bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--up)}
+.alert{padding:9px 10px;border-radius:6px;font-size:13px;margin-top:8px;border:1px solid}
+.alert.r{border-color:var(--down);color:var(--down);background:rgba(239,91,107,.08)}
+.alert.a{border-color:var(--warn);color:var(--warn);background:rgba(224,169,59,.08)}
+.alert.g{border-color:var(--up);color:var(--up);background:rgba(51,196,141,.08)}
+
+.news{margin-top:16px}
+.newshead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.newshead h2{margin:0}
+.nl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:0 24px}
+.nl li{padding:9px 0;border-bottom:1px solid var(--line);min-width:0}
+.nl a{color:var(--text);text-decoration:none;font-weight:500;overflow-wrap:anywhere}
+.nl a:hover{color:var(--accent);text-decoration:underline}
+.nl small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+details{margin-top:16px;color:var(--muted);font-size:13px}
+summary{cursor:pointer;color:var(--text)}
+footer{margin-top:20px;font-size:12px;color:var(--muted)}
+.scroll{overflow-x:auto}
+.nav{display:flex;gap:6px}
+.nav a{padding:6px 10px;border:1px solid var(--line);border-radius:6px;color:var(--muted);text-decoration:none;font-size:13px}
+.nav a[aria-current]{color:var(--text);border-color:var(--warn);background:#1a1710}
+.ctl.opts{margin-top:6px}
+.ctl input[type=number]{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:3px 6px;font-family:var(--mono)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:11.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;opacity:.6;vertical-align:-1px}
+.legend i.ln{height:0;border-top:1px dashed var(--muted);border-radius:0;opacity:1;width:14px;vertical-align:3px}
+ul.chk{list-style:none;margin:12px 0 0;padding:0}
+ul.chk li{display:flex;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+ul.chk li:last-child{border-bottom:0}
+ul.chk .ic{flex:none;width:20px;height:20px;border-radius:50%;text-align:center;line-height:19px;font-size:12px;font-weight:600;border:1px solid var(--line);color:var(--muted)}
+ul.chk .ok .ic{background:rgba(51,196,141,.15);color:var(--up);border-color:rgba(51,196,141,.5)}
+ul.chk .no .ic{background:rgba(239,91,107,.12);color:var(--down);border-color:rgba(239,91,107,.5)}
+ul.chk small{display:block;color:var(--muted);font-size:12px}
+ul.chk .wt{color:var(--muted)}
+.hist td:nth-child(2){text-align:left}
+.hist td:last-child{text-align:right;font-family:var(--mono);font-size:12px}
+.stat div div{background:none;border:0;padding:0;border-radius:0}
+/* ---- profesional: tokeni, temă, bară KPI ---- */
+:root{--bg:#090d12;--panel:#0f151c;--panel2:#0b1016;--line:#1c2530;--tabon:#1a1710;--shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 24px rgba(0,0,0,.25)}
+:root[data-theme="light"]{--bg:#eef1f5;--panel:#ffffff;--panel2:#f5f7fa;--line:#dbe1ea;--text:#18212c;--muted:#607086;--up:#0e9a68;--down:#d3323f;--warn:#b26b00;--accent:#2563d4;--tabon:#fff4dc;--shadow:0 1px 2px rgba(20,30,50,.06);color-scheme:light}
+body{background:var(--bg);letter-spacing:.005em}
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);padding-block:10px;margin-inline:-16px;padding-inline:16px}
+.card{background:var(--panel);box-shadow:var(--shadow);border-radius:10px}
+.tab[aria-pressed="true"],.nav a[aria-current]{background:var(--tabon)}
+.tools{display:flex;gap:6px}
+.tool{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:12.5px}
+.tool[aria-pressed="true"]{border-color:var(--up);color:var(--up);background:color-mix(in srgb,var(--up) 10%,var(--panel))}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:0;box-shadow:var(--shadow)}
+.kpi .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.kpi .v{font-family:var(--mono);font-size:16px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#evBanner .ev{margin-top:12px;padding:10px 14px;border-radius:8px;border:1px solid var(--down);background:color-mix(in srgb,var(--down) 10%,var(--panel));color:var(--down);font-weight:500}
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+@media (max-width:1000px){.duo{grid-template-columns:minmax(0,1fr)}}
+table.lst td,table.lst th{padding:7px 6px;text-align:left}
+table.lst th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+table.lst td:last-child,table.lst th:last-child{text-align:right}
+table.lst td.r,table.lst th.r{text-align:right}
+table.lst tr.click{cursor:pointer}
+table.lst tr.click:hover td{background:var(--panel2)}
+.dotp{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--muted)}
+.dotp.h{background:var(--down)} .dotp.m{background:var(--warn)}
+.mini{font-size:11px;padding:2px 8px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);margin-left:3px}
+.mini:hover{border-color:var(--muted)}
+.mini.up{color:var(--up)} .mini.down{color:var(--down)}
+.scroll{overflow-x:auto}
+#chartCard:fullscreen{overflow:auto;padding:18px;background:var(--bg)}
+.gr{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px;margin-left:8px}
+.gr.a{background:color-mix(in srgb,var(--up) 18%,transparent);color:var(--up)}
+.gr.c{background:color-mix(in srgb,var(--down) 15%,transparent);color:var(--down)}
+.gr.n{background:var(--panel2);color:var(--muted)}
+.ftmo2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:start}
+.form3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1100px){.ftmo2{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.form3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:12px}
+@media (max-width:900px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+@media (max-width:1000px){.mgrid{grid-template-columns:minmax(0,1fr)}}
+.brow{display:grid;grid-template-columns:110px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.brow:last-child{border-bottom:0}
+.brow .nm{font-weight:600}
+.brow small{display:block;color:var(--muted);font-size:12px;line-height:1.35}
+.arrow{font-family:var(--mono);font-weight:600;font-size:13px;padding:3px 9px;border-radius:6px;white-space:nowrap}
+.arrow.up{background:color-mix(in srgb,var(--up) 16%,transparent);color:var(--up)}
+.arrow.down{background:color-mix(in srgb,var(--down) 16%,transparent);color:var(--down)}
+.arrow.flat{background:var(--panel2);color:var(--muted)}
+.evc{display:grid;grid-template-columns:96px 1fr;gap:4px 12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.evc:last-child{border-bottom:0}
+.evc .t{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.evc .t b{display:block;color:var(--text);font-size:14px}
+.evc .ti{font-weight:500}
+.evc .nums{display:flex;flex-wrap:wrap;gap:2px 14px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:2px}
+.evc .nums b{color:var(--text);font-weight:500}
+.evc.past{opacity:.72}
+.chs{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.ch{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);cursor:default}
+.ch.up{color:var(--up);border-color:color-mix(in srgb,var(--up) 45%,transparent)}
+.ch.down{color:var(--down);border-color:color-mix(in srgb,var(--down) 45%,transparent)}
+.scn{font-size:11px;color:var(--muted);margin:6px 0 0}
+.nitem{padding:11px 0;border-bottom:1px solid var(--line)}
+.nitem:last-child{border-bottom:0}
+.nitem a{color:var(--text);text-decoration:none;font-weight:500;overflow-wrap:anywhere}
+.nitem a:hover{color:var(--accent);text-decoration:underline}
+.nitem small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.imp{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-right:6px;background:color-mix(in srgb,var(--down) 16%,transparent);color:var(--down)}
+.strip .kpi .v{font-size:15px}
+.sk{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+/* ---- pagina Acasă ---- */
+.hero{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:12px;margin-top:14px}
+.hc{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel);box-shadow:var(--shadow);min-width:0}
+.hc.emph{background:linear-gradient(135deg,color-mix(in srgb,var(--warn) 13%,var(--panel)),var(--panel) 70%);border-color:color-mix(in srgb,var(--warn) 32%,var(--line))}
+.hk{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.hv{font-size:20px;font-weight:650;margin-top:5px;letter-spacing:-.01em}
+.hv.big{font:600 32px/1.1 var(--mono);letter-spacing:-.03em;color:var(--warn)}
+.hs{font-size:12.5px;color:var(--muted);margin-top:4px}.hs b{color:var(--text)}
+.mgrid{gap:18px;margin-top:18px}
+.brow{grid-template-columns:118px 1fr auto;padding:12px 0;align-items:center}
+.brow .nm{display:flex;flex-direction:column;font-weight:600;line-height:1.2}
+.brow .nm .sh{font:500 10.5px var(--mono);color:var(--muted);letter-spacing:.06em;margin-top:2px}
+.brow .mid{min-width:0}
+.bm{position:relative;height:5px;border-radius:99px;background:linear-gradient(90deg,color-mix(in srgb,var(--down) 55%,var(--panel2)),var(--panel2) 50%,color-mix(in srgb,var(--up) 55%,var(--panel2)));margin:2px 0 7px}
+.bm::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line2)}
+.bm i{position:absolute;top:-4px;width:13px;height:13px;border-radius:50%;transform:translateX(-50%);background:var(--muted);box-shadow:0 0 0 3px var(--panel)}
+.bm i.up{background:var(--up);box-shadow:0 0 0 3px var(--panel),0 0 14px var(--up)}
+.bm i.down{background:var(--down);box-shadow:0 0 0 3px var(--panel),0 0 14px var(--down)}
+.arrow{border-radius:999px;padding:4px 11px;font-size:12px}
+.dayh{position:sticky;top:62px;z-index:2;margin:14px -18px 0;padding:8px 18px;font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:600;color:var(--muted);background:color-mix(in srgb,var(--panel2) 92%,transparent);border-block:1px solid var(--line);backdrop-filter:blur(8px)}
+.dayh:first-child{margin-top:0}
+.evc{grid-template-columns:78px 1fr;padding:13px 0}
+.evc .t{display:flex;flex-direction:column;gap:3px}
+.evc .t .cur{font:600 10.5px var(--mono);letter-spacing:.06em;padding:1px 6px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);align-self:flex-start;color:var(--muted)}
+.evc .ti{font-weight:550;display:flex;flex-wrap:wrap;align-items:center;gap:0 6px}
+.evc .nums b.up{color:var(--up)}.evc .nums b.down{color:var(--down)}
+.dotp{box-shadow:0 0 0 3px color-mix(in srgb,currentColor 0%,transparent)}
+.dotp.h{background:var(--down);box-shadow:0 0 10px color-mix(in srgb,var(--down) 70%,transparent)}
+.ch{border-radius:6px}
+.nitem{padding:14px 0}
+.nitem a{font-size:14.5px;line-height:1.4;display:block}
+.imp{border-radius:6px}
+@media (max-width:900px){.hero{grid-template-columns:1fr}.hv.big{font-size:30px}.dayh{top:56px;margin-inline:-14px;padding-inline:14px}}
+@media (max-width:520px){.brow{grid-template-columns:1fr auto;grid-template-areas:"n a" "m m"}.brow .nm{grid-area:n;flex-direction:row;gap:8px;align-items:baseline}.brow .arrow{grid-area:a}.brow .mid{grid-area:m}}
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .hc{padding:12px 14px}.hc.emph{grid-column:1/-1;order:-1}
+  .hv{font-size:17px}.hs{font-size:12px}
+}
+</style>
+<!--SHELL-HEAD--><meta name="theme-color" content="#090d12">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Panou">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/favicon.png">
+<!--/SHELL-HEAD-->
+<!--SHELL-CSS--><style>/* ---- shell PWA ---- */
+:root{--safe-b:env(safe-area-inset-bottom,0px)}
+.tabbar{display:none}
+.card{border-radius:12px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 100%,#fff 2%),var(--panel))}
+#offline{display:none;position:sticky;top:0;z-index:50;margin:0 -16px 8px;padding:8px 16px;font-size:13px;text-align:center;background:color-mix(in srgb,var(--down) 22%,var(--bg));color:var(--text);border-bottom:1px solid var(--down)}
+#offline.old{background:color-mix(in srgb,var(--warn) 20%,var(--bg));border-bottom-color:var(--warn)}
+@media (max-width:760px){
+  body{padding-inline:12px;padding-bottom:calc(84px + var(--safe-b))}
+  .top .nav{display:none}
+  .top{position:sticky;top:0;z-index:40;background:var(--bg);padding-top:max(8px,env(safe-area-inset-top,0px));margin-inline:-12px;padding-inline:12px}
+  .card{padding:12px}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 6px calc(6px + var(--safe-b))}
+  .tabbar a{flex:1;text-align:center;text-decoration:none;color:var(--muted);font-size:11px;padding:6px 2px;border-radius:10px;line-height:1.25}
+  .tabbar a b{display:block;font-size:18px;font-weight:400;line-height:1.1;margin-bottom:2px}
+  .tabbar a[aria-current]{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+}
+
+/* =================== TEMĂ PROFESIONALĂ (comună tuturor paginilor) =================== */
+:root{
+  --bg:#06080c;--bg2:#0a0e14;--panel:#0d1218;--panel2:#090d12;--line:#18202b;--line2:#233042;
+  --text:#e8edf4;--muted:#8291a6;--up:#2ed39a;--down:#ff5d73;--warn:#e8b64e;--accent:#79a8ff;--tabon:rgba(232,182,78,.11);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --shadow:0 1px 0 rgba(255,255,255,.035) inset,0 10px 30px -12px rgba(0,0,0,.55);
+  --glow:radial-gradient(900px 420px at 12% -8%,rgba(232,182,78,.075),transparent 60%),radial-gradient(800px 460px at 92% -12%,rgba(121,168,255,.07),transparent 60%);
+  --r:14px;--r2:10px;
+}
+:root[data-theme="light"]{
+  --bg:#f2f4f8;--bg2:#e9edf3;--panel:#ffffff;--panel2:#f5f7fa;--line:#e1e6ee;--line2:#ced6e2;
+  --text:#141c27;--muted:#5d6d83;--up:#0c9a68;--down:#d6303f;--warn:#b26d00;--accent:#2a62d6;--tabon:rgba(178,109,0,.10);
+  --shadow:0 1px 2px rgba(20,32,52,.05),0 12px 30px -16px rgba(20,32,52,.18);
+  --glow:radial-gradient(900px 420px at 12% -8%,rgba(232,182,78,.16),transparent 60%),radial-gradient(800px 460px at 92% -12%,rgba(42,98,214,.10),transparent 60%);
+}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{background:var(--glow),var(--bg);background-attachment:fixed;font:14px/1.5 var(--font);font-feature-settings:'cv11','ss01','tnum';letter-spacing:0;-webkit-font-smoothing:antialiased;max-width:1680px}
+.num,.mono,.kpi .v,.phead .big,td.mono{font-feature-settings:'tnum','zero';letter-spacing:-.01em}
+::selection{background:color-mix(in srgb,var(--warn) 35%,transparent)}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px;border:2px solid var(--bg)}::-webkit-scrollbar-track{background:transparent}
+
+/* ---- antet ---- */
+.top{position:sticky;top:0;z-index:40;margin-inline:-16px;padding:12px 16px;border-bottom:1px solid var(--line);
+  background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);gap:12px 22px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:16px;letter-spacing:-.01em;margin-right:4px}
+.brand::before{content:"";width:34px;height:34px;flex:none;border-radius:10px;background:
+  url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'><g stroke-linecap='round'><path d='M9 8v18M17 5v20M25 11v17' stroke='%23ffffff' stroke-opacity='.35' stroke-width='1.6'/></g><rect x='6' y='12' width='6' height='9' rx='1.6' fill='%232ed39a'/><rect x='14' y='9' width='6' height='10' rx='1.6' fill='%23ff5d73'/><rect x='22' y='15' width='6' height='9' rx='1.6' fill='%23e8b64e'/></svg>") center/100% no-repeat,
+  linear-gradient(145deg,#182231,#0b1017);box-shadow:0 0 0 1px var(--line2),0 8px 20px -8px rgba(232,182,78,.35)}
+.brand small{display:block;font-weight:500;font-size:10.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-top:1px}
+.brand>*{display:block}
+.nav{display:flex;gap:2px;padding:4px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.nav a{padding:7px 14px;border:0;border-radius:9px;color:var(--muted);font-weight:500;font-size:13px;transition:color .15s,background .15s,box-shadow .15s;white-space:nowrap}
+.nav a:hover{color:var(--text)}
+.nav a[aria-current]{color:var(--text);background:var(--panel);box-shadow:0 0 0 1px var(--line2),0 4px 14px -6px rgba(0,0,0,.6);}
+.nav a[aria-current]::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--warn);margin-left:8px;vertical-align:2px;box-shadow:0 0 8px var(--warn)}
+.status{font-size:12px;color:var(--muted);font-weight:500;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel2);white-space:nowrap}
+.dot{width:7px;height:7px;box-shadow:0 0 0 0 color-mix(in srgb,var(--up) 60%,transparent);animation:pulse 2.2s infinite}
+.dot.bad,.dot.old{animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--up) 55%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.tool{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 12px;font-weight:500;transition:border-color .15s,background .15s}
+.tool:hover{border-color:var(--line2);background:var(--panel)}
+
+/* ---- carduri ---- */
+.card{background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 94%,#fff 6%) 0,var(--panel) 42px);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
+:root[data-theme="light"] .card{background:var(--panel)}
+.card h2{display:flex;align-items:center;gap:9px;margin:0 0 14px;font-size:11.5px;letter-spacing:.12em;color:var(--muted);font-weight:600}
+.card h2::before{content:"";width:3px;height:12px;border-radius:2px;background:linear-gradient(var(--warn),color-mix(in srgb,var(--warn) 30%,transparent))}
+.newshead h2{margin:0}
+.stack{gap:18px}.grid{gap:18px}
+
+/* ---- butoane, taburi, formulare ---- */
+.tab,.btn,.ctl button,.mini{transition:border-color .15s,background .15s,color .15s,transform .05s}
+.tab{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 12px}
+.tab:hover{border-color:var(--line2)}
+.tab:active,.btn:active{transform:translateY(1px)}
+.tab[aria-pressed="true"]{border-color:color-mix(in srgb,var(--warn) 70%,transparent);background:var(--tabon);box-shadow:0 0 0 1px color-mix(in srgb,var(--warn) 25%,transparent),0 6px 20px -10px var(--warn)}
+.tab .n{font-weight:600}
+.tf{border-radius:10px;padding:7px 13px;font-weight:500}
+.btn{border-radius:10px;padding:8px 14px;font-weight:500;background:var(--panel2)}
+.btn:hover{border-color:var(--line2);background:var(--panel)}
+.btn.pri{background:linear-gradient(180deg,#f0c364,#dca43a);color:#1b1305;border-color:transparent;box-shadow:0 8px 22px -10px rgba(232,182,78,.7);font-weight:600}
+.btn.pri:hover{filter:brightness(1.06)}
+.form input,.form select,.ctl input[type=number],.ctl select,.ctl button{border-radius:9px;background:var(--panel2);border:1px solid var(--line);transition:border-color .15s,box-shadow .15s}
+.form input:focus,.form select:focus,.ctl input:focus,.ctl select:focus{outline:0;border-color:var(--warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 20%,transparent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+input[type=checkbox]{accent-color:var(--warn)}
+
+/* ---- componente ---- */
+.verdict{border-radius:12px;background:var(--panel2);padding:14px}
+.verdict h3{font-size:15.5px;font-weight:600}
+.tag{border-radius:7px;letter-spacing:.04em}
+.stat div{border-radius:10px;background:var(--panel2);padding:10px 12px}
+.stat .v{font-size:19px}
+.chip{border-radius:999px;padding:2px 9px}
+.alert{border-radius:11px;padding:10px 12px}
+.meter{height:6px;border-radius:99px}
+.meter i{top:-5px;height:16px;width:4px;border-radius:3px;box-shadow:0 0 0 2px var(--panel)}
+table.lst th,th{letter-spacing:.07em}
+td,th{border-bottom-color:var(--line)}
+.plan td{padding:8px 0}
+.gr{border-radius:999px}
+.readout{font-size:12px}
+.charts{border-radius:10px}
+details{border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:var(--panel)}
+details[open] summary{margin-bottom:8px}
+summary{font-weight:500}
+footer{text-align:center;padding:10px 0 4px}
+#evBanner .ev{border-radius:12px;padding:12px 16px;font-weight:500;display:flex;gap:10px;align-items:center;background:linear-gradient(90deg,color-mix(in srgb,var(--down) 16%,var(--panel)),color-mix(in srgb,var(--down) 6%,var(--panel)));box-shadow:0 10px 30px -18px var(--down)}
+
+/* ---- prețuri (bandă) ---- */
+.strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin-top:16px}
+.kpi{position:relative;overflow:hidden;border-radius:14px;padding:13px 14px 12px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 92%,#fff 8%),var(--panel));border:1px solid var(--line);box-shadow:var(--shadow)}
+.strip .kpi::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--line2)}
+.strip .kpi.up::before{background:var(--up);box-shadow:0 0 14px var(--up)}
+.strip .kpi.down::before{background:var(--down);box-shadow:0 0 14px var(--down)}
+.strip .kpi .k{display:flex;justify-content:space-between;align-items:center;font-weight:600;letter-spacing:.1em;font-size:10.5px}
+.strip .kpi .k em{font-style:normal;font-weight:500;color:var(--muted);opacity:.7;letter-spacing:.06em}
+.strip .kpi .v{font-size:20px;margin-top:6px;letter-spacing:-.02em}
+.chg{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:2px 8px;border-radius:999px;font:600 11.5px var(--mono);background:var(--panel2);color:var(--muted)}
+.chg.up{background:color-mix(in srgb,var(--up) 15%,transparent);color:var(--up)}
+.chg.down{background:color-mix(in srgb,var(--down) 15%,transparent);color:var(--down)}
+.kpis .kpi{padding:11px 14px}
+.kpi .k{font-weight:600}
+
+/* ---- responsiv / iPhone ---- */
+@media (max-width:1180px){.strip{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:760px){
+  body{font-size:14px}
+  .top{margin-inline:-12px;padding:10px 12px;gap:8px 12px}
+  .brand{font-size:15px}.brand::before{width:30px;height:30px}
+  .card{padding:14px;border-radius:14px}
+  .strip{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin-inline:-12px;padding:2px 12px 6px;scrollbar-width:none}
+  .strip::-webkit-scrollbar{display:none}
+  .strip .kpi{flex:0 0 148px;scroll-snap-align:start}
+  .status{font-size:11px;padding:5px 10px;margin-left:auto}
+  .tabbar{border-radius:0;border-top:1px solid var(--line2);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.5) blur(18px);-webkit-backdrop-filter:saturate(1.5) blur(18px)}
+  .tabbar a{font-weight:500}
+  .tabbar a b{font-size:19px}
+  .tabbar a[aria-current]{background:var(--tabon);color:var(--warn)}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-14px;padding-inline:14px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs .tab{flex:none}
+  .phead .big{font-size:26px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+body{padding-top:0}
+@media (max-width:760px){.strip{scroll-padding-inline:12px}}
+@media (max-width:760px){
+  .brand{white-space:nowrap}
+  .brand small{display:none}
+  .status{white-space:normal;flex:1 1 100%;margin-left:0;text-align:left;border-radius:12px;max-width:100%;overflow-wrap:anywhere}
+  .top{flex-wrap:wrap}
+}
+@media (max-width:760px){.top .tabs{margin-inline:-12px;padding-inline:12px}}
+.ftmo2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:start}
+.form3{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+@media (max-width:1100px){.ftmo2{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.form3{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+</style><!--/SHELL-CSS-->
+</head>
+<body>
+<!--SHELL-BODY--><div id="offline" role="status"></div>
+<nav class="tabbar" aria-label="Navigare"><a href="/" data-p="/"><b>◧</b>Acasă</a><a href="/ma" data-p="/ma"><b>≈</b>MA · RSI</a><a href="/fvg" data-p="/fvg"><b>◈</b>FVG · MSS</a></nav>
+<!--/SHELL-BODY-->
+
+<header class="top">
+  <div class="brand">Altrix<small>Acasă · Macro · Știri</small></div>
+  <nav class="nav"><a href="/" aria-current="page">Acasă</a><a href="/ma">MA · RSI · MACD</a><a href="/fvg">FVG · Lichiditate · MSS</a></nav>
+  <div class="tools"><button class="tool" id="btnTheme" type="button" aria-label="Schimbă tema" title="Temă întunecată / luminoasă">◐</button></div>
+  <div class="status" id="status">Se încarcă…</div>
+</header>
+<section class="strip" id="strip" aria-label="Prețuri"></section>
+<section class="hero" id="hero" aria-label="Acum"></section>
+<div id="evBanner"></div>
+
+<div class="mgrid">
+  <section class="card" aria-label="Bias macro">
+    <h2>Bias macro din datele publicate azi</h2>
+    <div id="biasBox"><p class="muted">Se încarcă…</p></div>
+  </section>
+  <section class="card" aria-label="Urmează">
+    <h2>Urmează · cum ar putea muta piața</h2>
+    <div id="nextBox"><p class="muted">Se încarcă…</p></div>
+  </section>
+</div>
+
+<section class="card" style="margin-top:16px" aria-label="Calendar">
+  <div class="newshead"><h2>Calendar economic · 48 h</h2>
+    <div class="tabs" id="calFilter" role="group" aria-label="Filtru impact"><button class="tab tf" type="button" data-f="high" aria-pressed="true">Impact mare</button><button class="tab tf" type="button" data-f="all" aria-pressed="false">Toate</button></div></div>
+  <div id="calBox"><p class="muted">Se încarcă…</p></div>
+</section>
+
+<section class="card" style="margin-top:16px" aria-label="Știri">
+  <div class="newshead"><h2>Știri de piață, traduse în română</h2>
+    <div class="tabs" id="newsTabs" role="group" aria-label="Sursă știri"></div></div>
+  <div id="newsBox"><p class="muted">Se încarcă…</p></div>
+</section>
+
+<details>
+  <summary>Cum se calculează impactul (și ce nu poate face)</summary>
+  <p><b>Evenimentele.</b> Fiecare indicator e clasificat după numele lui: cei „pozitivi” (inflație, locuri de muncă, PIB, vânzări cu amănuntul, PMI etc.) întăresc moneda când ies peste prognoză; cei inverși (rata șomajului, cererile de șomaj) o slăbesc. Apoi se aplică relațiile obișnuite dintre monede și instrumente: dolar mai puternic → aur și EUR/USD în jos, USD/JPY în sus; yen mai puternic → USD/JPY și Nikkei în jos; euro mai puternic → EUR/USD în sus.</p>
+  <p><b>Biasul de azi</b> adună evenimentele deja publicate, cu semnul surprizei (actual minus prognoză) și cu o pondere mai mare pentru cele cu impact mare. Surprize mai mici de 2% din prognoză se consideră „în linie”.</p>
+  <p><b>Știrile</b> sunt etichetate după cuvinte-cheie din titlu (Fed, randamente, dolar, geopolitică, tarife etc.). Sunt semnale euristice, nu analiză editorială.</p>
+  <p><b>Limite.</b> Reacția reală depinde de context: piața poate ignora o surprize deja anticipată sau poate reacționa invers. Folosește impactul ca reper, nu ca semnal de intrare. Sursa datelor: prețuri FTMO (MetaApi); calendarul și știrile TradingView (Reuters, Dow Jones și alții); Bloomberg nu este conectat, pentru că nu oferă acces gratuit la știri.</p>
+</details>
+<footer>Instrument informativ, nu sfat de investiții. Prețurile vin direct de la contul tău FTMO prin MetaApi, serverul rulează non-stop.</footer>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const fin=Number.isFinite;
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const p2=n=>String(n).padStart(2,'0');
+const INSTR={NIKKEI:{label:'Nikkei 225',sh:'N225',dec:1},GOLD:{label:'Aur',sh:'XAU',dec:2},EURUSD:{label:'EUR/USD',sh:'EUR',dec:5},USDJPY:{label:'USD/JPY',sh:'JPY',dec:3},DAX:{label:'DAX',sh:'DAX',dec:1},GBPUSD:{label:'GBP/USD',sh:'GBP',dec:5},UK100:{label:'UK100',sh:'UK100',dec:1}};
+const IN=['GOLD','EURUSD','USDJPY','DAX','NIKKEI','GBPUSD','UK100'];
+const S={cal:[],calErr:null,news:{},newsTab:store.get('nt','ALL'),calF:store.get('calF','high'),quotes:{},lastOk:null,err:null};
+async function api(path){const r=await fetch(path,{cache:'no-store'});let j;try{j=await r.json()}catch(e){throw new Error('Serverul local nu răspunde. Pornește aplicația Altrix.')}
+  if(!r.ok)throw new Error(j.error||('Eroare '+r.status));return j}
+const fmt=(v,d)=>fin(v)?v.toLocaleString('ro-RO',{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:false}):'–';
+const nv=(v,u)=>v==null||v===''?'–':(typeof v==='number'?String(v).replace('.',','):esc(v))+(u&&typeof v==='number'?' '+esc(u):'');
+function ago(ts){const s=Math.max(0,Date.now()/1000-ts);if(s<90)return 'acum un minut';if(s<3600)return `acum ${Math.round(s/60)} min`;if(s<86400)return `acum ${Math.round(s/3600)} h`;return `acum ${Math.round(s/86400)} zile`}
+function evTime(ts){const d=new Date(ts*1000),t=new Date(),tm=new Date(Date.now()+86400000),y=new Date(Date.now()-86400000);const hm=p2(d.getHours())+':'+p2(d.getMinutes());
+  const same=(a,b)=>a.getDate()===b.getDate()&&a.getMonth()===b.getMonth();return [same(d,t)?'azi':same(d,tm)?'mâine':same(d,y)?'ieri':p2(d.getDate())+'.'+p2(d.getMonth()+1),hm]}
+function cd(ts){const m=Math.round((ts-Date.now()/1000)/60);if(m<=-1)return `acum ${-m} min`;if(m<1)return 'acum';if(m<60)return `în ${m} min`;const h=Math.floor(m/60);return h<24?`în ${h} h ${m%60} min`:`în ${Math.floor(h/24)} zile`}
+
+/* ---------- motor de impact ---------- */
+// efectul unei monede mai puternice asupra instrumentelor: [direcție, pondere]
+function effect(cur,cat,country,s,inst){
+  const g=cat==='growth'||cat==='labor',h=cat==='infl'||cat==='rate';let d=0,w=0,why='';
+  if(cur==='USD'){
+    if(inst==='GOLD'){d=-s;w=2;why=s>0?'dolar și randamente mai puternice apasă aurul':'dolar mai slab susține aurul'}
+    else if(inst==='EURUSD'){d=-s;w=2;why=s>0?'dolar mai puternic: EUR/USD scade':'dolar mai slab: EUR/USD crește'}
+    else if(inst==='USDJPY'){d=s;w=2;why=s>0?'dolarul urcă față de yen':'dolarul scade față de yen'}
+    else if(inst==='DAX'){if(h){d=-s;w=1;why=s>0?'randamente și dolar mai mari strâng condițiile financiare':'randamente mai mici ușurează condițiile financiare'}else if(g){d=s;w=1;why=s>0?'economie americană mai puternică sprijină cererea globală':'economie americană mai slabă reduce cererea globală'}}
+    else if(inst==='NIKKEI'){d=s;w=1;why=s>0?'yen mai slab ajută exportatorii':'yen mai puternic lovește exportatorii'}
+    else if(inst==='GBPUSD'){d=-s;w=2;why=s>0?'dolar mai puternic: GBP/USD scade':'dolar mai slab: GBP/USD crește'}
+    else if(inst==='UK100'){if(h){d=-s;w=1;why=s>0?'randamente și dolar mai mari apasă acțiunile':'randamente mai mici sprijină acțiunile'}else if(g){d=s;w=1;why=s>0?'economie americană mai puternică sprijină cererea globală':'economie americană mai slabă reduce cererea globală'}}
+  }else if(cur==='EUR'){
+    if(inst==='EURUSD'){d=s;w=2;why=s>0?'euro mai puternic':'euro mai slab'}
+    else if(inst==='GOLD'){d=s;w=1;why=s>0?'dolar relativ mai slab, aur ușor în sus':'dolar relativ mai puternic, aur ușor în jos'}
+    else if(inst==='DAX'){if(country==='DE'||g){d=s;w=1;why=s>0?'date europene mai bune sprijină acțiunile':'date europene mai slabe apasă acțiunile'}else if(h){d=-s;w=1;why=s>0?'BCE mai restrictivă apasă acțiunile':'BCE mai relaxată sprijină acțiunile'}}
+  }else if(cur==='GBP'){
+    if(inst==='GBPUSD'){d=s;w=2;why=s>0?'lira mai puternică':'lira mai slabă'}
+    else if(inst==='UK100'){if(h){d=-s;w=1;why=s>0?'BoE mai restrictivă apasă acțiunile':'BoE mai relaxată sprijină acțiunile'}else if(g){d=s;w=1;why=s>0?'date britanice bune sprijină acțiunile':'date britanice slabe apasă acțiunile'}}
+    else if(inst==='GOLD'){d=s;w=1;why=s>0?'dolar relativ mai slab, aur ușor în sus':'dolar relativ mai puternic, aur ușor în jos'}
+  }else if(cur==='JPY'){
+    if(inst==='USDJPY'){d=-s;w=2;why=s>0?'yen mai puternic: USD/JPY scade':'yen mai slab: USD/JPY crește'}
+    else if(inst==='NIKKEI'){d=-s;w=2;why=s>0?'yen mai puternic lovește exportatorii':'yen mai slab ajută exportatorii'}
+  }
+  return{d,w,why}}
+function classify(t){
+  t=(t||'').toLowerCase();
+  if(/unemploy|jobless|claimant/.test(t))return{sign:-1,cat:'labor'};
+  if(/speech|speaks|testimony|minutes|press conference|meeting|summary of opinions|lagarde|powell|ueda|governor|president/.test(t))return{sign:0,cat:'speech'};
+  if(/cpi|inflation|ppi|pce|price index|deflator|producer prices|consumer prices/.test(t))return{sign:1,cat:'infl'};
+  if(/interest rate|rate decision|refinancing/.test(t))return{sign:1,cat:'rate'};
+  if(/employment|payroll|nonfarm|adp|jolts|job openings|earnings|wage/.test(t))return{sign:1,cat:'labor'};
+  if(/retail sales|gdp|pmi|ism|industrial production|manufacturing|services|consumer confidence|sentiment|durable|housing|home sales|building permits|spending|income|business|tankan|zew|ifo|factory|orders|trade balance/.test(t))return{sign:1,cat:'growth'};
+  return{sign:0,cat:'other'}}
+const CURS=['USD','EUR','JPY','GBP'];
+// impact per instrument pentru o schimbare s a monedei evenimentului
+function impactOf(ev,s){const c=classify(ev.title_en||ev.title),out={};
+  for(const k of IN){const e=CURS.includes(ev.currency)?effect(ev.currency,c.cat,ev.country,s,k):{d:0,w:0,why:''};out[k]=e}return out}
+function surprise(ev){if(ev.actual==null||ev.forecast==null)return null;const d=ev.actual-ev.forecast,rel=Math.abs(d)/Math.max(Math.abs(ev.forecast),0.1);return rel<0.02?0:Math.sign(d)}
+function chips(imp){return IN.map(k=>{const e=imp[k];if(!e.d)return `<span class="ch" title="fără efect clar">${INSTR[k].sh} ●</span>`;
+  return `<span class="ch ${e.d>0?'up':'down'}" title="${esc(INSTR[k].label+': '+e.why)}">${INSTR[k].sh} ${e.d>0?'▲':'▼'}</span>`}).join('')}
+function scenarios(ev){
+  const c=classify(ev.title_en||ev.title);
+  if(!CURS.includes(ev.currency))return `<p class="scn">Impact redus pe instrumentele tale.</p>`;
+  if(c.sign===0)return `<p class="scn">${c.cat==='speech'?'Discurs: volatilitate probabilă. Direcția depinde de ton (mai restrictiv sau mai relaxat), nu de un număr.':'Fără regulă clară de impact pentru acest indicator.'}</p>`;
+  const su=surprise(ev);
+  if(su!==null){const s=su*c.sign;
+    if(su===0)return `<p class="scn"><b>Publicat în linie cu prognoza</b>: reacție mică probabilă.</p>`;
+    return `<p class="scn"><b>Publicat ${su>0?'peste':'sub'} prognoză</b> → ${ev.currency} ${s>0?'mai puternic':'mai slab'}</p><div class="chs">${chips(impactOf(ev,s))}</div>`}
+  return `<p class="scn">Dacă iese <b>peste</b> prognoză${ev.forecast==null?' (fără prognoză publicată)':''}:</p><div class="chs">${chips(impactOf(ev,c.sign))}</div><p class="scn">Dacă iese <b>sub</b> prognoză:</p><div class="chs">${chips(impactOf(ev,-c.sign))}</div>`}
+
+/* ---------- bias realizat ---------- */
+function renderBias(){
+  const box=$('#biasBox'),now=Date.now()/1000;
+  const done=S.cal.filter(e=>e.actual!=null&&e.forecast!=null&&e.ts>now-24*3600&&e.ts<=now&&CURS.includes(e.currency));
+  if(!S.cal.length){box.innerHTML=S.calErr?`<p class="down">${esc(S.calErr)}</p>`:'<p class="muted">Se încarcă…</p>';return}
+  const acc={},src={};for(const k of IN){acc[k]=0;src[k]=[]}
+  for(const e of done){const c=classify(e.title_en),su=surprise(e);if(!su||!c.sign)continue;const wi=e.importance>=1?2:1,imp=impactOf(e,su*c.sign);
+    for(const k of IN){const x=imp[k];if(x.d){acc[k]+=x.d*x.w*wi;src[k].push({t:e.title,d:x.d,w:x.w*wi,su})}}}
+  if(!done.length){box.innerHTML='<p class="muted">În ultimele 24 de ore nu s-au publicat date cu prognoză pentru USD, EUR sau JPY.</p>';return}
+  box.innerHTML=IN.map(k=>{const v=acc[k],a=Math.abs(v),cl=v>0?'up':v<0?'down':'flat',lab=a>=4?(v>0?'▲ bullish':'▼ bearish'):a>=1?(v>0?'▲ ușor bullish':'▼ ușor bearish'):'● neutru';
+    const top=src[k].sort((x,y)=>y.w-x.w).slice(0,3).map(s=>`${esc(s.t)} (${s.su>0?'peste':'sub'})`).join(' · ');
+    const pos=Math.max(4,Math.min(96,50+v/8*46));
+    return `<div class="brow"><div class="nm">${INSTR[k].label}<span class="sh">${INSTR[k].sh}</span></div><div class="mid"><div class="bm"><i class="${cl}" style="left:${pos}%"></i></div><small>${top||'niciun eveniment cu efect clar'}</small></div><span class="arrow ${cl}">${lab}</span></div>`}).join('')+
+    `<p class="note">Bazat pe ${done.length} evenimente publicate în ultimele 24 h, cu surpriza față de prognoză. Estimare euristică, nu recomandare.</p>`}
+
+/* ---------- ce urmează ---------- */
+function renderNext(){
+  const box=$('#nextBox'),now=Date.now()/1000;if(!S.cal.length){box.innerHTML=S.calErr?'':'<p class="muted">Se încarcă…</p>';return}
+  let up=S.cal.filter(e=>e.ts>now-300&&e.ts<now+36*3600&&CURS.includes(e.currency));
+  const hi=up.filter(e=>e.importance>=1);up=(hi.length?hi:up).slice(0,4);
+  if(!up.length){box.innerHTML='<p class="muted">Nu urmează evenimente relevante în următoarele 36 de ore.</p>';return}
+  box.innerHTML=up.map(e=>{const[d,h]=evTime(e.ts);return `<div class="evc" style="grid-template-columns:86px 1fr"><div class="t"><b>${h}</b>${d}<br><span class="cdn" data-ts="${e.ts}">${cd(e.ts)}</span></div><div><div class="ti"><span class="dotp ${e.importance>=1?'h':'m'}"></span>${esc(e.currency)} · ${esc(e.title)}</div><div class="nums">prognoză <b>${nv(e.forecast,e.unit)}</b> anterior <b>${nv(e.previous,e.unit)}</b>${e.actual!=null?` actual <b>${nv(e.actual,e.unit)}</b>`:''}</div>${scenarios(e)}</div></div>`}).join('')}
+
+/* ---------- calendar ---------- */
+function renderCal(){
+  const box=$('#calBox'),now=Date.now()/1000;
+  $('#calFilter').querySelectorAll('[data-f]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.f===S.calF));
+  if(!S.cal.length){box.innerHTML=S.calErr?`<p class="down">Nu pot încărca calendarul: ${esc(S.calErr)}</p>`:'<p class="muted">Se încarcă…</p>';return}
+  const rows=S.cal.filter(e=>e.ts>now-4*3600&&(S.calF==='all'||e.importance>=1)).slice(0,40);
+  if(!rows.length){box.innerHTML='<p class="muted">Nu sunt evenimente cu impact mare în această fereastră. Alege „Toate”.</p>';return}
+  let lastD='';
+  box.innerHTML=rows.map(e=>{const[d,h]=evTime(e.ts),past=e.ts<now;
+    const head=d!==lastD?`<div class="dayh">${dayLabel(e.ts)}</div>`:'';lastD=d;
+    const su=surprise(e),cl0=classify(e.title_en||e.title),dir=su&&cl0.sign?su*cl0.sign:0;
+    const act=e.actual==null?'–':nv(e.actual,e.unit);
+    const tagc=dir?`<span class="ch ${dir>0?'up':'down'}">${esc(e.currency)} ${dir>0?'mai puternic':'mai slab'}</span>`:'';
+    return head+`<div class="evc ${past?'past':''}"><div class="t"><b>${h}</b><span class="cur">${esc(e.currency||e.country)}</span></div><div><div class="ti"><span class="dotp ${e.importance>=1?'h':'m'}"></span>${esc(e.title)} ${tagc}</div><div class="nums"><span>prognoză <b>${nv(e.forecast,e.unit)}</b></span><span>anterior <b>${nv(e.previous,e.unit)}</b></span><span>actual <b class="${dir>0?'up':dir<0?'down':''}">${act}</b></span></div>${e.importance>=1||S.calF==='all'?scenarios(e):''}</div></div>`}).join('')}
+function dayLabel(ts){const d=new Date(ts*1000),[w]=evTime(ts);const n=['duminică','luni','marți','miercuri','joi','vineri','sâmbătă'][d.getDay()];const dt=p2(d.getDate())+'.'+p2(d.getMonth()+1);return w==='azi'?`Azi · ${n} ${dt}`:w==='mâine'?`Mâine · ${n} ${dt}`:w==='ieri'?`Ieri · ${n} ${dt}`:`${n} ${dt}`}
+
+/* ---------- știri ---------- */
+const IMPORTANT=/\b(fed|fomc|powell|cpi|nfp|payrolls?|ecb|lagarde|boj|ueda|inflation|rate (hike|cut|decision)|tariffs?|gdp|recession|war|opec|treasury|yields?)\b/i;
+function headlineImpact(t){
+  const acc={};for(const k of IN)acc[k]=0;const add=(cur,s,cat)=>{for(const k of IN){const e=effect(cur,cat,'',s,k);acc[k]+=e.d*e.w}};
+  if(/hike bets|rate[- ]hike|hawkish|hot (cpi|inflation|jobs)|strong (jobs|data|dollar)|dollar (rises|gains|climbs|jumps|firms|rallies|strengthens)|yields? (rise|jump|climb|surge|higher)|higher for longer/i.test(t))add('USD',1,'infl');
+  if(/rate[- ]cut|dovish|dollar (falls|slips|slides|weakens|drops|sinks)|weak (jobs|data|dollar)|yields? (fall|drop|slip|slide|lower|dip)|soft (cpi|inflation)/i.test(t))add('USD',-1,'infl');
+  if(/gold (rises|climbs|jumps|gains|rallies|surges|higher|hits record)|safe[- ]haven|haven demand/i.test(t))acc.GOLD+=2;
+  if(/gold (falls|drops|slides|slips|declines|tumbles|lower)/i.test(t))acc.GOLD-=2;
+  if(/\b(war|attack|strike|missile|conflict|tensions?|geopolit\w*|middle east|ukraine|iran|israel|tariffs?|trade war|sanctions?)\b/i.test(t)){acc.GOLD+=1;acc.DAX-=1;acc.NIKKEI-=1}
+  if(/(boj|bank of japan)[^.]*(hike|hawkish)|yen (rises|gains|surges|strengthens)|yen intervention/i.test(t))add('JPY',1,'rate');
+  if(/yen (falls|weakens|slides|slumps)|boj[^.]*(dovish|on hold)/i.test(t))add('JPY',-1,'rate');
+  if(/ecb[^.]*(hike|hawkish)|euro (rises|gains|climbs|strengthens)/i.test(t))add('EUR',1,'rate');
+  if(/ecb[^.]*(cut|dovish)|euro (falls|slips|weakens|drops)/i.test(t))add('EUR',-1,'rate');
+  return acc}
+const NEWS_TABS=[['ALL','Toate'],['MACRO','Macro'],['GOLD','Aur'],['EURUSD','EUR/USD'],['USDJPY','USD/JPY'],['DAX','DAX'],['NIKKEI','Nikkei'],['GBPUSD','GBP/USD'],['UK100','UK100']];
+function renderNews(){
+  $('#newsTabs').innerHTML=NEWS_TABS.map(([k,l])=>`<button class="tab tf" type="button" data-nt="${k}" aria-pressed="${k===S.newsTab}">${l}</button>`).join('');
+  const d=S.news[S.newsTab],box=$('#newsBox');
+  if(!d){box.innerHTML='<p class="muted">Se încarcă știrile…</p>';return}
+  if(d.error){box.innerHTML=`<p class="down">Nu pot încărca știrile: ${esc(d.error)}</p>`;return}
+  if(!d.length){box.innerHTML='<p class="muted">Nu sunt știri recente.</p>';return}
+  box.innerHTML=d.map(n=>{const en=n.title_en||'',hi=headlineImpact(en),ch=IN.filter(k=>hi[k]!==0).map(k=>`<span class="ch ${hi[k]>0?'up':'down'}" title="estimat din titlu">${INSTR[k].sh} ${hi[k]>0?'▲':'▼'}</span>`).join('');
+    const tg=(n.tags||[]).filter(t=>INSTR[t]).map(t=>`<span class="ch">${INSTR[t].sh}</span>`).join('');
+    return `<div class="nitem">${IMPORTANT.test(en)?'<span class="imp">Important</span>':''}<a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer" title="${esc(en)}">${esc(n.title)}</a><small>${esc(n.source)} · ${ago(n.ts)}${n.translated===false?' · netradus':''}</small>${(ch||tg)?`<div class="chs">${ch}${tg}</div>`:''}</div>`}).join('')}
+
+
+/* ---------- hero ---------- */
+function sessionNow(){const h=new Date().getUTCHours()+new Date().getUTCMinutes()/60;
+  const L=[[0,7,'Asia · Tokyo','Piețe asiatice active; lichiditate mai mică pe EUR și GBP'],[7,12,'Londra','Kill zone Londra: cea mai bună lichiditate pentru EUR, GBP, DAX, UK100'],[12,16,'Londra + New York','Suprapunere: volatilitate maximă, se publică datele SUA'],[16,21,'New York','După-amiaza americană; aurul și dolarul dictează'],[21,24,'Închidere','Lichiditate redusă, spread-uri mai largi']];
+  for(const[a,b,n,t] of L)if(h>=a&&h<b){const m=Math.round((b-h)*60);return{n,t,left:m>=60?`${Math.floor(m/60)} h ${m%60} min`:`${m} min`}}
+  return{n:'—',t:'',left:''}}
+function renderHero(){
+  const box=$('#hero');if(!box)return;const now=Date.now()/1000,ses=sessionNow();
+  const hi=S.cal.filter(e=>e.importance>=1&&CURS.includes(e.currency)&&e.ts>now-600).sort((a,b)=>a.ts-b.ts);
+  const nx=hi[0],today=hi.filter(e=>new Date(e.ts*1000).toDateString()===new Date().toDateString());
+  const by={};today.forEach(e=>by[e.currency]=(by[e.currency]||0)+1);
+  const risk=today.length?Object.entries(by).map(([c,n])=>`${c} ${n}`).join(' · '):'';
+  box.innerHTML=`<div class="hc"><div class="hk">Sesiune acum</div><div class="hv">${esc(ses.n)}</div><div class="hs">${esc(ses.t)}${ses.left?` · încă ${ses.left}`:''}</div></div>
+  <div class="hc emph"><div class="hk">Următoarea știre cu impact</div>${nx?`<div class="hv big"><span class="cdn2" data-ts="${nx.ts}">${cd2(nx.ts)}</span></div><div class="hs"><b>${esc(nx.currency)}</b> · ${esc(nx.title)} · ${evTime(nx.ts)[1]}</div>`:'<div class="hv">Liniște</div><div class="hs">Nicio știre cu impact mare în calendar</div>'}</div>
+  <div class="hc"><div class="hk">Risc azi</div><div class="hv">${today.length?today.length+(today.length===1?' eveniment':' evenimente'):'Fără evenimente'}</div><div class="hs">${today.length?`cu impact mare rămase azi (${esc(risk)})`:'cu impact mare rămase azi'}</div></div>`}
+function cd2(ts){const s=Math.round(ts-Date.now()/1000);if(s<=-60)return 'publicat';if(s<=0)return 'ACUM';const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h>0?`${h}:${p2(m)}:${p2(x)}`:`${p2(m)}:${p2(x)}`}
+
+/* ---------- prețuri, banner, status ---------- */
+function renderStrip(){
+  $('#strip').innerHTML=IN.map(k=>{const q=S.quotes[k],I=INSTR[k];let p='–',c='',cl='',ar='';
+    if(q&&q.price){p=fmt(q.price,I.dec);if(q.prev){const ch=(q.price/q.prev-1)*100;c=(ch>=0?'+':'')+ch.toFixed(2).replace('.',',')+'%';cl=ch>=0?'up':'down';ar=ch>=0?'▲':'▼'}}
+    return `<div class="kpi ${cl}"><div class="k"><span>${I.label}</span><em>${I.sh}</em></div><div class="v">${p}</div>${c?`<span class="chg ${cl}">${ar} ${c}</span>`:'<span class="chg">&nbsp;</span>'}</div>`}).join('')}
+function renderEv(){
+  const now=Date.now()/1000,e=S.cal.find(e=>e.importance>=1&&CURS.includes(e.currency)&&e.ts-now<=1800&&e.ts-now>=-900);
+  $('#evBanner').innerHTML=e?`<div class="ev">⚠ Știre de impact (${esc(e.currency)}): ${esc(e.title)} ${cd(e.ts)}. Volatilitate mare probabilă pe ${IN.filter(k=>impactOf(e,1)[k].d).map(k=>INSTR[k].label).join(', ')||'instrumentele tale'}.</div>`:''}
+function renderStatus(){const el=$('#status');
+  if(S.err){el.innerHTML=`<span class="dot bad"></span>Fără conexiune la date<br><span style="color:var(--down)">${esc(S.err)}</span>`;return}
+  el.innerHTML=S.lastOk?`<span class="dot"></span>Live · actualizat ${new Date(S.lastOk).toLocaleTimeString('ro-RO')}`:'Se încarcă…'}
+function tick(){document.querySelectorAll('.cdn').forEach(el=>el.textContent=cd(+el.dataset.ts));document.querySelectorAll('.cdn2').forEach(el=>el.textContent=cd2(+el.dataset.ts))}
+
+/* ---------- încărcare ---------- */
+async function loadCal(){try{S.cal=await api('/api/calendar');S.calErr=null;S.lastOk=Date.now();S.err=null}catch(e){S.calErr=e.message;S.err=e.message}
+  renderCal();renderBias();renderNext();renderEv();renderHero();renderStatus()}
+async function loadNews(){const k=S.newsTab;try{S.news[k]=await api('/api/news?sym='+k)}catch(e){S.news[k]={error:e.message}}renderNews()}
+async function loadQuotes(){try{S.quotes=await api('/api/quotes')}catch(e){}renderStrip()}
+$('#calFilter').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(b){S.calF=b.dataset.f;store.set('calF',S.calF);renderCal()}});
+$('#newsTabs').addEventListener('click',e=>{const b=e.target.closest('[data-nt]');if(b){S.newsTab=b.dataset.nt;store.set('nt',S.newsTab);renderNews();loadNews()}});
+function applyTheme(t){document.documentElement.dataset.theme=t;store.set('theme',t)}
+applyTheme(store.get('theme','dark'));$('#btnTheme').onclick=()=>applyTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
+renderStrip();renderNews();renderCal();renderBias();renderNext();renderHero();renderStatus();
+loadCal();loadNews();loadQuotes();
+setInterval(loadCal,120000);setInterval(loadNews,150000);setInterval(()=>{if(!document.hidden)loadQuotes()},2000);setInterval(tick,1000);setInterval(()=>{renderEv();renderNext();renderHero()},30000);
+
+</script>
+<!--SHELL-JS--><script>(function(){
+try{document.querySelectorAll('.tabbar a').forEach(a=>{if(a.dataset.p===location.pathname||(a.dataset.p==='/'&&location.pathname==='/macro'))a.setAttribute('aria-current','page')})}catch(e){}
+try{if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('/sw.js')}catch(e){}
+const box=document.getElementById('offline');let stale=0;
+function show(){if(!box)return;if(stale){box.className='old';box.style.display='block';box.textContent=stale}else{box.style.display='none'}}
+const of=window.fetch;
+let qFirst=1;function qGet(){try{return localStorage.getItem('pq')}catch(e){return null}}
+window.fetch=function(){const a0=arguments;const u0=String(a0[0]);
+ if(u0.indexOf('/api/quotes')>=0){const c=qFirst?qGet():null;qFirst=0;
+  const sv=r=>{if(r.ok)r.clone().text().then(t=>{try{localStorage.setItem('pq',t)}catch(e){}}).catch(()=>{});return r};
+  if(c){of.apply(this,a0).then(sv).catch(()=>{});return Promise.resolve(new Response(c,{status:200,headers:{'Content-Type':'application/json'}}))}
+  return of.apply(this,a0).then(sv)}
+ return of.apply(this,arguments).then(r=>{try{const u=String(arguments[0]);if(u.indexOf('/api/')>=0&&u.indexOf('/api/status')<0){const a=r.headers.get('X-Age');if(r.headers.get('X-Stale')){const m=Math.round((+a||0)/60);stale='Date vechi'+(m>0?' de '+m+' min':'')+' – sursa nu trimite date acum.';show()}}}catch(e){}return r})};
+async function chk(){try{const r=await of('/api/status');if(!r.ok)return;const j=await r.json();
+ if(j.agent_age==null||j.agent_age>75){stale='Sursa de date FTMO nu răspunde momentan; vezi ultimele date primite. Serverul reîncearcă singur.';box.className='';box.style.display='block';box.textContent=stale}
+ else{stale=0;show()}}catch(e){}}
+setInterval(chk,20000);setTimeout(chk,1500);
+})();
+</script><!--/SHELL-JS-->
+</body>
+</html>

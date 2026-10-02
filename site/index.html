@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Altrix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: bară sus (instrument + timeframe), grafic mare la stânga, decizie + poziție + risc FTMO la dreapta, știri dedesubt */
+:root{
+  --bg:#0b0f14; --panel:#121820; --panel2:#0f141b; --line:#1f2935; --text:#d6dde7; --muted:#7c8a9b;
+  --up:#33c48d; --down:#ef5b6b; --warn:#e0a93b; --accent:#6ea8fe; --ma50:#e0a93b; --ma100:#6ea8fe; --ma200:#c084fc;
+  --font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 var(--font);padding-inline:16px;padding-block:12px 40px;max-width:1600px;margin-inline:auto}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.up{color:var(--up)} .down{color:var(--down)} .warn{color:var(--warn)}
+
+.top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.brand{font-weight:600;letter-spacing:.02em;margin-right:6px}
+.brand small{display:block;font-weight:400;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;text-align:left;min-width:0}
+.tab[aria-pressed="true"]{border-color:var(--warn);background:#1a1710}
+.tab .n{display:block;font-size:12px;font-weight:600}
+.tab .p{display:block;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.tab .p i{font-style:normal;margin-left:6px;font-size:11px}
+.tf{padding:6px 12px;font-family:var(--mono);font-size:13px;text-align:center}
+.nav{display:flex;gap:6px}
+.nav a{padding:6px 10px;border:1px solid var(--line);border-radius:6px;color:var(--muted);text-decoration:none;font-size:13px}
+.nav a[aria-current]{color:var(--text);border-color:var(--warn);background:#1a1710}
+.status{margin-left:auto;text-align:right;font-size:12px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--up);margin-right:6px}
+.dot.bad{background:var(--down)} .dot.old{background:var(--warn)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 430px;gap:16px;margin-top:14px;align-items:start}
+@media (max-width:1100px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+.card h2{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+.phead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin-bottom:6px}
+.phead .big{font-family:var(--mono);font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.phead .nm{font-size:16px;font-weight:600}
+.readout{font-family:var(--mono);font-size:11.5px;color:var(--muted);min-height:34px;display:flex;flex-wrap:wrap;gap:2px 14px;margin-bottom:6px}
+.readout b{font-weight:500;color:var(--text)}
+.charts{position:relative;touch-action:pan-y;user-select:none;cursor:crosshair}
+.charts canvas{display:block;width:100%}
+.ctl{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.ctl button,.ctl select{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:3px 9px}
+.ctl label{display:flex;gap:5px;align-items:center}
+
+.verdict{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:6px;border:1px solid var(--line);background:var(--panel2)}
+.verdict .tag{font-family:var(--mono);font-weight:600;font-size:13px;padding:4px 9px;border-radius:4px;white-space:nowrap}
+.tag.long{background:rgba(51,196,141,.15);color:var(--up)} .tag.short{background:rgba(239,91,107,.15);color:var(--down)} .tag.flat{background:rgba(124,138,155,.15);color:var(--muted)}
+.verdict h3{margin:0 0 2px;font-size:15px}
+.verdict p{margin:0;color:var(--muted);font-size:13px}
+.v-good{border-color:var(--up)} .v-ok{border-color:var(--warn)} .v-wait{border-color:var(--warn)} .v-no{border-color:var(--line)}
+.meter{position:relative;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--down),#2a3441 50%,var(--up));margin:14px 0 4px}
+.meter i{position:absolute;top:-4px;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)}
+.meterlab{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+td,th{padding:5px 0;text-align:left;font-weight:400;border-bottom:1px solid var(--line);vertical-align:top}
+td:last-child,th:last-child{text-align:right}
+tr:last-child td{border-bottom:0}
+.plan td:nth-child(2){text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.plan td:last-child{color:var(--muted);font-size:12px;text-align:right}
+.chip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);margin-left:6px}
+.chip.b{color:var(--up);border-color:rgba(51,196,141,.4)} .chip.s{color:var(--down);border-color:rgba(239,91,107,.4)} .chip.n{color:var(--muted)} .chip.w{color:var(--warn);border-color:rgba(224,169,59,.4)}
+ul.why{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:13px}
+ul.why li{margin:2px 0}
+.stat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.stat div{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px}
+.stat .k{font-size:11px;color:var(--muted)} .stat .v{font-family:var(--mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--muted);min-width:0}
+.form .full{grid-column:1/-1}
+.form input,.form select{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:7px 8px;width:100%;min-width:0;font-family:var(--mono);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 12px;font-size:13px}
+.btn.pri{background:var(--warn);color:#15110a;border-color:var(--warn);font-weight:600}
+.btn:hover{border-color:var(--muted)}
+.out{margin-top:12px}
+.bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--up)}
+.alert{padding:9px 10px;border-radius:6px;font-size:13px;margin-top:8px;border:1px solid}
+.alert.r{border-color:var(--down);color:var(--down);background:rgba(239,91,107,.08)}
+.alert.a{border-color:var(--warn);color:var(--warn);background:rgba(224,169,59,.08)}
+.alert.g{border-color:var(--up);color:var(--up);background:rgba(51,196,141,.08)}
+
+.news{margin-top:16px}
+.newshead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.newshead h2{margin:0}
+.nl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:0 24px}
+.nl li{padding:9px 0;border-bottom:1px solid var(--line);min-width:0}
+.nl a{color:var(--text);text-decoration:none;font-weight:500;overflow-wrap:anywhere}
+.nl a:hover{color:var(--accent);text-decoration:underline}
+.nl small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+details{margin-top:16px;color:var(--muted);font-size:13px}
+summary{cursor:pointer;color:var(--text)}
+footer{margin-top:20px;font-size:12px;color:var(--muted)}
+.scroll{overflow-x:auto}
+</style>
+<!--SHELL-HEAD--><meta name="theme-color" content="#090d12">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Panou">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/favicon.png">
+<!--/SHELL-HEAD-->
+<!--SHELL-CSS--><style>/* ---- shell PWA ---- */
+:root{--safe-b:env(safe-area-inset-bottom,0px)}
+.tabbar{display:none}
+.card{border-radius:12px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 100%,#fff 2%),var(--panel))}
+#offline{display:none;position:sticky;top:0;z-index:50;margin:0 -16px 8px;padding:8px 16px;font-size:13px;text-align:center;background:color-mix(in srgb,var(--down) 22%,var(--bg));color:var(--text);border-bottom:1px solid var(--down)}
+#offline.old{background:color-mix(in srgb,var(--warn) 20%,var(--bg));border-bottom-color:var(--warn)}
+@media (max-width:760px){
+  body{padding-inline:12px;padding-bottom:calc(84px + var(--safe-b))}
+  .top .nav{display:none}
+  .top{position:sticky;top:0;z-index:40;background:var(--bg);padding-top:max(8px,env(safe-area-inset-top,0px));margin-inline:-12px;padding-inline:12px}
+  .card{padding:12px}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 6px calc(6px + var(--safe-b))}
+  .tabbar a{flex:1;text-align:center;text-decoration:none;color:var(--muted);font-size:11px;padding:6px 2px;border-radius:10px;line-height:1.25}
+  .tabbar a b{display:block;font-size:18px;font-weight:400;line-height:1.1;margin-bottom:2px}
+  .tabbar a[aria-current]{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+}
+
+/* =================== TEMĂ PROFESIONALĂ (comună tuturor paginilor) =================== */
+:root{
+  --bg:#06080c;--bg2:#0a0e14;--panel:#0d1218;--panel2:#090d12;--line:#18202b;--line2:#233042;
+  --text:#e8edf4;--muted:#8291a6;--up:#2ed39a;--down:#ff5d73;--warn:#e8b64e;--accent:#79a8ff;--tabon:rgba(232,182,78,.11);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --shadow:0 1px 0 rgba(255,255,255,.035) inset,0 10px 30px -12px rgba(0,0,0,.55);
+  --glow:radial-gradient(900px 420px at 12% -8%,rgba(232,182,78,.075),transparent 60%),radial-gradient(800px 460px at 92% -12%,rgba(121,168,255,.07),transparent 60%);
+  --r:14px;--r2:10px;
+}
+:root[data-theme="light"]{
+  --bg:#f2f4f8;--bg2:#e9edf3;--panel:#ffffff;--panel2:#f5f7fa;--line:#e1e6ee;--line2:#ced6e2;
+  --text:#141c27;--muted:#5d6d83;--up:#0c9a68;--down:#d6303f;--warn:#b26d00;--accent:#2a62d6;--tabon:rgba(178,109,0,.10);
+  --shadow:0 1px 2px rgba(20,32,52,.05),0 12px 30px -16px rgba(20,32,52,.18);
+  --glow:radial-gradient(900px 420px at 12% -8%,rgba(232,182,78,.16),transparent 60%),radial-gradient(800px 460px at 92% -12%,rgba(42,98,214,.10),transparent 60%);
+}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{background:var(--glow),var(--bg);background-attachment:fixed;font:14px/1.5 var(--font);font-feature-settings:'cv11','ss01','tnum';letter-spacing:0;-webkit-font-smoothing:antialiased;max-width:1680px}
+.num,.mono,.kpi .v,.phead .big,td.mono{font-feature-settings:'tnum','zero';letter-spacing:-.01em}
+::selection{background:color-mix(in srgb,var(--warn) 35%,transparent)}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px;border:2px solid var(--bg)}::-webkit-scrollbar-track{background:transparent}
+
+/* ---- antet ---- */
+.top{position:sticky;top:0;z-index:40;margin-inline:-16px;padding:12px 16px;border-bottom:1px solid var(--line);
+  background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);gap:12px 22px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:16px;letter-spacing:-.01em;margin-right:4px}
+.brand::before{content:"";width:34px;height:34px;flex:none;border-radius:10px;background:
+  url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'><g stroke-linecap='round'><path d='M9 8v18M17 5v20M25 11v17' stroke='%23ffffff' stroke-opacity='.35' stroke-width='1.6'/></g><rect x='6' y='12' width='6' height='9' rx='1.6' fill='%232ed39a'/><rect x='14' y='9' width='6' height='10' rx='1.6' fill='%23ff5d73'/><rect x='22' y='15' width='6' height='9' rx='1.6' fill='%23e8b64e'/></svg>") center/100% no-repeat,
+  linear-gradient(145deg,#182231,#0b1017);box-shadow:0 0 0 1px var(--line2),0 8px 20px -8px rgba(232,182,78,.35)}
+.brand small{display:block;font-weight:500;font-size:10.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-top:1px}
+.brand>*{display:block}
+.nav{display:flex;gap:2px;padding:4px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.nav a{padding:7px 14px;border:0;border-radius:9px;color:var(--muted);font-weight:500;font-size:13px;transition:color .15s,background .15s,box-shadow .15s;white-space:nowrap}
+.nav a:hover{color:var(--text)}
+.nav a[aria-current]{color:var(--text);background:var(--panel);box-shadow:0 0 0 1px var(--line2),0 4px 14px -6px rgba(0,0,0,.6);}
+.nav a[aria-current]::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--warn);margin-left:8px;vertical-align:2px;box-shadow:0 0 8px var(--warn)}
+.status{font-size:12px;color:var(--muted);font-weight:500;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel2);white-space:nowrap}
+.dot{width:7px;height:7px;box-shadow:0 0 0 0 color-mix(in srgb,var(--up) 60%,transparent);animation:pulse 2.2s infinite}
+.dot.bad,.dot.old{animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--up) 55%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.tool{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 12px;font-weight:500;transition:border-color .15s,background .15s}
+.tool:hover{border-color:var(--line2);background:var(--panel)}
+
+/* ---- carduri ---- */
+.card{background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 94%,#fff 6%) 0,var(--panel) 42px);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
+:root[data-theme="light"] .card{background:var(--panel)}
+.card h2{display:flex;align-items:center;gap:9px;margin:0 0 14px;font-size:11.5px;letter-spacing:.12em;color:var(--muted);font-weight:600}
+.card h2::before{content:"";width:3px;height:12px;border-radius:2px;background:linear-gradient(var(--warn),color-mix(in srgb,var(--warn) 30%,transparent))}
+.newshead h2{margin:0}
+.stack{gap:18px}.grid{gap:18px}
+
+/* ---- butoane, taburi, formulare ---- */
+.tab,.btn,.ctl button,.mini{transition:border-color .15s,background .15s,color .15s,transform .05s}
+.tab{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 12px}
+.tab:hover{border-color:var(--line2)}
+.tab:active,.btn:active{transform:translateY(1px)}
+.tab[aria-pressed="true"]{border-color:color-mix(in srgb,var(--warn) 70%,transparent);background:var(--tabon);box-shadow:0 0 0 1px color-mix(in srgb,var(--warn) 25%,transparent),0 6px 20px -10px var(--warn)}
+.tab .n{font-weight:600}
+.tf{border-radius:10px;padding:7px 13px;font-weight:500}
+.btn{border-radius:10px;padding:8px 14px;font-weight:500;background:var(--panel2)}
+.btn:hover{border-color:var(--line2);background:var(--panel)}
+.btn.pri{background:linear-gradient(180deg,#f0c364,#dca43a);color:#1b1305;border-color:transparent;box-shadow:0 8px 22px -10px rgba(232,182,78,.7);font-weight:600}
+.btn.pri:hover{filter:brightness(1.06)}
+.form input,.form select,.ctl input[type=number],.ctl select,.ctl button{border-radius:9px;background:var(--panel2);border:1px solid var(--line);transition:border-color .15s,box-shadow .15s}
+.form input:focus,.form select:focus,.ctl input:focus,.ctl select:focus{outline:0;border-color:var(--warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 20%,transparent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+input[type=checkbox]{accent-color:var(--warn)}
+
+/* ---- componente ---- */
+.verdict{border-radius:12px;background:var(--panel2);padding:14px}
+.verdict h3{font-size:15.5px;font-weight:600}
+.tag{border-radius:7px;letter-spacing:.04em}
+.stat div{border-radius:10px;background:var(--panel2);padding:10px 12px}
+.stat .v{font-size:19px}
+.chip{border-radius:999px;padding:2px 9px}
+.alert{border-radius:11px;padding:10px 12px}
+.meter{height:6px;border-radius:99px}
+.meter i{top:-5px;height:16px;width:4px;border-radius:3px;box-shadow:0 0 0 2px var(--panel)}
+table.lst th,th{letter-spacing:.07em}
+td,th{border-bottom-color:var(--line)}
+.plan td{padding:8px 0}
+.gr{border-radius:999px}
+.readout{font-size:12px}
+.charts{border-radius:10px}
+details{border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:var(--panel)}
+details[open] summary{margin-bottom:8px}
+summary{font-weight:500}
+footer{text-align:center;padding:10px 0 4px}
+#evBanner .ev{border-radius:12px;padding:12px 16px;font-weight:500;display:flex;gap:10px;align-items:center;background:linear-gradient(90deg,color-mix(in srgb,var(--down) 16%,var(--panel)),color-mix(in srgb,var(--down) 6%,var(--panel)));box-shadow:0 10px 30px -18px var(--down)}
+
+/* ---- prețuri (bandă) ---- */
+.strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin-top:16px}
+.kpi{position:relative;overflow:hidden;border-radius:14px;padding:13px 14px 12px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 92%,#fff 8%),var(--panel));border:1px solid var(--line);box-shadow:var(--shadow)}
+.strip .kpi::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--line2)}
+.strip .kpi.up::before{background:var(--up);box-shadow:0 0 14px var(--up)}
+.strip .kpi.down::before{background:var(--down);box-shadow:0 0 14px var(--down)}
+.strip .kpi .k{display:flex;justify-content:space-between;align-items:center;font-weight:600;letter-spacing:.1em;font-size:10.5px}
+.strip .kpi .k em{font-style:normal;font-weight:500;color:var(--muted);opacity:.7;letter-spacing:.06em}
+.strip .kpi .v{font-size:20px;margin-top:6px;letter-spacing:-.02em}
+.chg{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:2px 8px;border-radius:999px;font:600 11.5px var(--mono);background:var(--panel2);color:var(--muted)}
+.chg.up{background:color-mix(in srgb,var(--up) 15%,transparent);color:var(--up)}
+.chg.down{background:color-mix(in srgb,var(--down) 15%,transparent);color:var(--down)}
+.kpis .kpi{padding:11px 14px}
+.kpi .k{font-weight:600}
+
+/* ---- responsiv / iPhone ---- */
+@media (max-width:1180px){.strip{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:760px){
+  body{font-size:14px}
+  .top{margin-inline:-12px;padding:10px 12px;gap:8px 12px}
+  .brand{font-size:15px}.brand::before{width:30px;height:30px}
+  .card{padding:14px;border-radius:14px}
+  .strip{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin-inline:-12px;padding:2px 12px 6px;scrollbar-width:none}
+  .strip::-webkit-scrollbar{display:none}
+  .strip .kpi{flex:0 0 148px;scroll-snap-align:start}
+  .status{font-size:11px;padding:5px 10px;margin-left:auto}
+  .tabbar{border-radius:0;border-top:1px solid var(--line2);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.5) blur(18px);-webkit-backdrop-filter:saturate(1.5) blur(18px)}
+  .tabbar a{font-weight:500}
+  .tabbar a b{font-size:19px}
+  .tabbar a[aria-current]{background:var(--tabon);color:var(--warn)}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-14px;padding-inline:14px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs .tab{flex:none}
+  .phead .big{font-size:26px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+body{padding-top:0}
+@media (max-width:760px){.strip{scroll-padding-inline:12px}}
+@media (max-width:760px){
+  .brand{white-space:nowrap}
+  .brand small{display:none}
+  .status{white-space:normal;flex:1 1 100%;margin-left:0;text-align:left;border-radius:12px;max-width:100%;overflow-wrap:anywhere}
+  .top{flex-wrap:wrap}
+}
+@media (max-width:760px){.top .tabs{margin-inline:-12px;padding-inline:12px}}
+.ftmo2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:start}
+.form3{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+@media (max-width:1100px){.ftmo2{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.form3{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+</style><!--/SHELL-CSS-->
+</head>
+<body>
+<!--SHELL-BODY--><div id="offline" role="status"></div>
+<nav class="tabbar" aria-label="Navigare"><a href="/" data-p="/"><b>◧</b>Acasă</a><a href="/ma" data-p="/ma"><b>≈</b>MA · RSI</a><a href="/fvg" data-p="/fvg"><b>◈</b>FVG · MSS</a></nav>
+<!--/SHELL-BODY-->
+
+
+<header class="top">
+  <div class="brand">Altrix<small>Strategie: medii mobile + indicatori</small></div>
+  <nav class="nav"><a href="/">Acasă</a><a href="/ma" aria-current="page">MA · RSI · MACD</a><a href="/fvg">FVG · Lichiditate · MSS</a></nav>
+  <div class="tabs" id="symTabs" role="group" aria-label="Instrument"></div>
+  <div class="tabs" id="tfTabs" role="group" aria-label="Timeframe"></div>
+  <div class="status" id="status">Se încarcă…</div>
+</header>
+
+<div class="grid">
+  <div class="stack"><section class="card" aria-label="Grafic">
+    <div class="phead"><span class="nm" id="phName"></span><span class="big" id="phPrice">–</span><span class="mono" id="phChg"></span></div>
+    <div class="readout" id="readout"></div>
+    <div class="charts" id="charts">
+      <canvas id="cvPrice"></canvas><canvas id="cvRsi"></canvas><canvas id="cvStoch"></canvas><canvas id="cvMacd"></canvas>
+    </div>
+    <div class="ctl">
+      <span>Zoom / derulare: rotița mouse-ului și tragere.</span>
+      <button id="zIn" type="button">Zoom +</button><button id="zOut" type="button">Zoom −</button><button id="zEnd" type="button">La zi</button>
+      <label>Medii mobile <select id="maType"><option value="SMA">SMA</option><option value="EMA">EMA</option></select></label>
+      <label><input type="checkbox" id="showPlan" checked> Arată planul pe grafic</label>
+    </div>
+  </section>
+
+    <section class="card" aria-label="Poziția mea">
+      <h2>Am o poziție în minte · ce rată de succes are?</h2>
+      <div class="form">
+        <label>Direcție<select id="p_dir"><option value="1">Long (cumpăr)</option><option value="-1">Short (vând)</option></select></label>
+        <label>Preț intrare<input id="p_entry" type="number" step="any" inputmode="decimal"></label>
+        <label>Stop loss<input id="p_sl" type="number" step="any" inputmode="decimal"></label>
+        <label>Take profit<input id="p_tp" type="number" step="any" inputmode="decimal"></label>
+      </div>
+      <div class="row"><button class="btn pri" id="p_go" type="button">Calculează rata de succes</button><button class="btn" id="p_fill" type="button">Preia din plan</button></div>
+      <div class="out" id="p_out"></div>
+    </section></div>
+  <aside class="stack">
+    <section class="card" id="signalCard" aria-label="Semnal"></section>
+  </aside>
+</div>
+
+    <section class="card" style="margin-top:16px" aria-label="Calculator FTMO">
+      <h2>Calculator risc FTMO</h2>
+      <div class="ftmo2"><div class="form form3">
+        <label>Mărime cont<input id="f_size" type="number" step="any" list="sizes" inputmode="decimal"><datalist id="sizes"><option value="10000"><option value="25000"><option value="50000"><option value="100000"><option value="200000"></datalist></label>
+        <label>Moneda contului<select id="f_ccy"><option>USD</option><option>EUR</option></select></label>
+        <label>Etapă<select id="f_phase"><option value="10">Challenge (țintă 10%)</option><option value="5">Verificare (țintă 5%)</option><option value="0">Cont Funded</option></select></label>
+        <label>Equity curent<input id="f_equity" type="number" step="any" inputmode="decimal"></label>
+        <label>P/L azi (inclusiv poziții deschise)<input id="f_pl" type="number" step="any" inputmode="decimal"></label>
+        <label>Risc pe tranzacție (%)<input id="f_risk" type="number" step="0.05" min="0" inputmode="decimal"></label>
+        <label>Preț intrare<input id="f_entry" type="number" step="any" inputmode="decimal"></label>
+        <label>Stop loss<input id="f_sl" type="number" step="any" inputmode="decimal"></label>
+        <label>Take profit (opțional)<input id="f_tp" type="number" step="any" inputmode="decimal"></label>
+        <label id="f_lvl">Valoare 1 lot per 1,00 mișcare de preț<input id="f_lotval" type="number" step="any" inputmode="decimal"></label>
+        <label class="full" style="flex-direction:row;align-items:center;gap:8px"><input id="f_sync" type="checkbox" style="width:auto" checked> Sincronizează intrarea și SL cu planul din analiză</label>
+      </div>
+      <div class="out" id="f_out"></div></div>
+    </section>
+
+
+<section class="card news" aria-label="Știri">
+  <div class="newshead">
+    <h2 id="newsTitle">Știri</h2>
+    <div class="tabs" id="newsTabs"></div>
+  </div>
+  <ul class="nl" id="newsList"><li class="muted">Se încarcă știrile…</li></ul>
+</section>
+
+<details>
+  <summary>Cum se calculează scorul și rata de succes</summary>
+  <p><b>Scorul (−100…+100)</b> adună patru grupe: trend din mediile 50/100/200 (max 40), RSI 14 (max 20), StochRSI 14·14·3·3 (max 20) și MACD 12·26·9 (max 20). Peste +30 înclină spre Long, sub −30 spre Short; peste ±55 semnalul e puternic. Între −30 și +30 nu există avantaj clar.</p>
+  <p><b>Planul</b>: intrare la ultimul preț, SL la ultimul minim/maxim din 10 lumânări plus 0,2 ATR (între 1,2 și 3 ATR), TP1 la 1,5R, TP2 la 2,5R.</p>
+  <p><b>Rata de succes</b> nu este o predicție. Programul reia istoricul încărcat pe instrumentul și timeframe-ul ales și numără, pentru semnale la fel de puternice și aceeași geometrie SL/TP, în câte cazuri prețul a atins TP înaintea SL (tranzacții succesive, fără suprapunere, intrare la deschiderea lumânării următoare, dacă ambele sunt atinse în aceeași lumânare se socotește pierdere, expirare după 80 de lumânări). Intervalul afișat este Wilson 95%. Sub 30 de cazuri, rezultatul e nesigur.</p>
+</details>
+<footer>Instrument informativ, nu sfat de investiții. Prețurile și lumânările vin direct de la contul tău FTMO (MetaApi, prețuri BID, ca în MT5); știrile vin din fluxul de știri TradingView și sunt traduse automat. Verifică totuși prețul în platforma FTMO înainte de a intra.</footer>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const fin=Number.isFinite;
+
+/* ---------- configurare instrumente ---------- */
+const INSTR={
+  NIKKEI:{label:'Nikkei 225',ftmo:'JP225',quote:'JPY',dec:1,unit:1,unitName:'puncte',lotVal:1},
+  GOLD:{label:'Aur',ftmo:'XAUUSD',quote:'USD',dec:2,unit:1,unitName:'$',lotVal:100},
+  EURUSD:{label:'EUR/USD',ftmo:'EURUSD',quote:'USD',dec:5,unit:0.0001,unitName:'pips',lotVal:100000},
+  USDJPY:{label:'USD/JPY',ftmo:'USDJPY',quote:'JPY',dec:3,unit:0.01,unitName:'pips',lotVal:100000},
+  DAX:{label:'DAX (GER40)',ftmo:'GER40',quote:'EUR',dec:1,unit:1,unitName:'puncte',lotVal:1},GBPUSD:{label:'GBP/USD',ftmo:'GBPUSD',quote:'USD',dec:5,unit:0.0001,unitName:'pips',lotVal:100000},UK100:{label:'UK100',ftmo:'UK100',quote:'GBP',dec:1,unit:1,unitName:'puncte',lotVal:1}
+};
+const SYMS=['NIKKEI','GOLD','EURUSD','USDJPY','DAX','GBPUSD','UK100'];
+const TFS=['1m','5m','15m','1h','4h','1d'];
+const TFSEC={'1m':60,'5m':300,'15m':900,'1h':3600,'4h':14400,'1d':86400};
+
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+const S={sym:store.get('sym','GOLD'),tf:store.get('tf','1h'),maType:store.get('maType','SMA'),bars:null,X:null,plan:null,quotes:{},
+  view:{count:120,off:0},hover:null,lastOk:null,err:null,newsTab:'sym',sync:true,posRes:null};
+if(!INSTR[S.sym])S.sym='GOLD'; if(!TFS.includes(S.tf))S.tf='1h';
+
+/* ---------- indicatori ---------- */
+function smaArr(a,n){const o=new Array(a.length).fill(NaN);let s=0,c=0;for(let i=0;i<a.length;i++){const v=a[i];if(fin(v)){s+=v;c++}else{s=0;c=0;continue}
+  if(c>n){s-=a[i-n]} if(c>=n)o[i]=s/n;}return o}
+function emaArr(a,n){const o=new Array(a.length).fill(NaN),k=2/(n+1);let cnt=0,sum=0,prev=NaN;
+  for(let i=0;i<a.length;i++){const v=a[i];if(!fin(v))continue;
+    if(!fin(prev)){cnt++;sum+=v;if(cnt===n){prev=sum/n;o[i]=prev}}else{prev=v*k+prev*(1-k);o[i]=prev}}return o}
+function rsiArr(c,n=14){const o=new Array(c.length).fill(NaN);let g=0,l=0;
+  for(let i=1;i<c.length;i++){const d=c[i]-c[i-1],up=Math.max(d,0),dn=Math.max(-d,0);
+    if(i<=n){g+=up;l+=dn;if(i===n){g/=n;l/=n;o[i]=l===0?100:100-100/(1+g/l)}}
+    else{g=(g*(n-1)+up)/n;l=(l*(n-1)+dn)/n;o[i]=l===0?100:100-100/(1+g/l)}}return o}
+function stochRsi(r,n=14,ks=3,ds=3){const raw=new Array(r.length).fill(NaN);
+  for(let i=n-1;i<r.length;i++){let lo=Infinity,hi=-Infinity,ok=true;for(let j=i-n+1;j<=i;j++){if(!fin(r[j])){ok=false;break}lo=Math.min(lo,r[j]);hi=Math.max(hi,r[j])}
+    if(ok)raw[i]=hi===lo?50:(r[i]-lo)/(hi-lo)*100}
+  const k=smaArr(raw,ks);return{k,d:smaArr(k,ds)}}
+function atrArr(h,l,c,n=14){const o=new Array(c.length).fill(NaN);let prev=NaN,sum=0;
+  for(let i=1;i<c.length;i++){const tr=Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1]));
+    if(i<=n){sum+=tr;if(i===n){prev=sum/n;o[i]=prev}}else{prev=(prev*(n-1)+tr)/n;o[i]=prev}}return o}
+
+function compute(bars,maType){
+  const t=bars.map(b=>b[0]),o=bars.map(b=>b[1]),h=bars.map(b=>b[2]),l=bars.map(b=>b[3]),c=bars.map(b=>b[4]);
+  const f=maType==='EMA'?emaArr:smaArr;
+  const X={t,o,h,l,c,ma50:f(c,50),ma100:f(c,100),ma200:f(c,200),rsi:rsiArr(c,14)};
+  const st=stochRsi(X.rsi);X.k=st.k;X.d=st.d;
+  const e12=emaArr(c,12),e26=emaArr(c,26);X.macd=c.map((_,i)=>e12[i]-e26[i]);
+  X.sig=emaArr(X.macd,9);X.hist=X.macd.map((v,i)=>v-X.sig[i]);
+  X.atr=atrArr(h,l,c,14);
+  X.score=c.map((_,i)=>{const s=scoreAt(X,i,false);return s?s.total:NaN});
+  return X}
+
+/* ---------- scor ---------- */
+function scoreAt(X,i,verbose){
+  if(i<6)return null;
+  const c=X.c[i],m50=X.ma50[i],m100=X.ma100[i],m200=X.ma200[i],r=X.rsi[i],k=X.k[i],d=X.d[i],mc=X.macd[i],sg=X.sig[i],hi=X.hist[i];
+  if(![m50,m100,m200,r,k,d,mc,sg,hi,X.atr[i],X.ma50[i-5],X.rsi[i-3],X.hist[i-1],X.k[i-1],X.d[i-1]].every(fin))return null;
+  const P={};
+  // trend
+  const t1=c>m50?10:-10,t2=c>m100?8:-8,t3=c>m200?8:-8;
+  const al=(m50>m100&&m100>m200)?10:(m50<m100&&m100<m200)?-10:0;
+  const sl=(m50-X.ma50[i-5])>0?4:-4;
+  const trend=t1+t2+t3+al+sl;
+  // RSI
+  let rs=clamp((r-50)*0.5,-12,12)+(r>X.rsi[i-3]?4:-4);
+  if(r>=72)rs-=8;else if(r<=28)rs+=8;rs=clamp(rs,-20,20);
+  // StochRSI
+  let st=k>d?8:-8;
+  for(let j=i-2;j<=i;j++){if(j<1||!fin(X.k[j-1])||!fin(X.d[j-1]))continue;
+    if(X.k[j-1]<=X.d[j-1]&&X.k[j]>X.d[j]){st+=6;break}
+    if(X.k[j-1]>=X.d[j-1]&&X.k[j]<X.d[j]){st-=6;break}}
+  if(k>85)st-=6;else if(k<15)st+=6;st=clamp(st,-20,20);
+  // MACD
+  let mm=(mc>sg?8:-8)+(hi>X.hist[i-1]?6:-6)+(mc>0?6:-6);mm=clamp(mm,-20,20);
+  const total=Math.round(trend+rs+st+mm);rs=Math.round(rs);
+  if(!verbose)return{total};
+  P.trend={v:trend,max:40};P.rsi={v:rs,max:20};P.stoch={v:st,max:20};P.macd={v:mm,max:20};
+  return{total,parts:P}}
+
+/* ---------- backtest ---------- */
+function backtest(X,dir,slA,tpA,filter,H=80){
+  let w=0,l=0,to=0,R=0;const n=X.c.length;
+  for(let i=210;i<n-2;){
+    if(!filter(i)){i++;continue}
+    const a=X.atr[i];if(!fin(a)||a<=0){i++;continue}
+    const e=X.o[i+1],risk=slA*a,sl=e-dir*risk,tp=e+dir*tpA*a,end=Math.min(n-1,i+H);
+    let res=0,j=i+1;
+    for(;j<=end;j++){
+      const hs=dir>0?X.l[j]<=sl:X.h[j]>=sl,ht=dir>0?X.h[j]>=tp:X.l[j]<=tp;
+      if(hs){res=-1;break} if(ht){res=1;break}}
+    if(res===0&&i+H>n-1)break;               // nerezolvat la capătul datelor
+    if(res===1){w++;R+=tpA/slA}else if(res===-1){l++;R-=1}else{to++;R+=dir*(X.c[end]-e)/risk;j=end}
+    i=j+1}
+  const N=w+l+to,p=N?w/N:NaN;
+  let lo=NaN,hi=NaN;if(N){const z=1.96,dn=1+z*z/N,cn=p+z*z/(2*N),m=z*Math.sqrt(p*(1-p)/N+z*z/(4*N*N));lo=(cn-m)/dn;hi=(cn+m)/dn}
+  return{N,w,l,to,p,lo,hi,exp:N?R/N:NaN}}
+
+/* ---------- plan ---------- */
+function makePlan(X){
+  const i=X.c.length-1,d=scoreAt(X,i,true);if(!d)return null;
+  const a=X.atr[i],c=X.c[i],dir=d.total>=0?1:-1,abs=Math.abs(d.total);
+  const ext=(c-X.ma50[i])/a*dir;
+  let lo=Infinity,hi=-Infinity;for(let j=i-9;j<=i;j++){lo=Math.min(lo,X.l[j]);hi=Math.max(hi,X.h[j])}
+  const swing=dir>0?c-lo:hi-c,dist=clamp(swing+0.2*a,1.2*a,3*a);
+  const entry=c,sl=entry-dir*dist,tp1=entry+dir*1.5*dist,tp2=entry+dir*2.5*dist;
+  const tSign=Math.sign(d.parts.trend.v);
+  const side=dir>0?'LONG':'SHORT';
+  let v;
+  if(abs<30)v={lvl:'no',title:'Nu intra acum',text:`Semnale mixte (scor ${d.total>0?'+':''}${d.total}). Nu există avantaj clar, așteaptă ca indicatorii să se alinieze.`};
+  else if(ext>2.5)v={lvl:'wait',title:`Direcție ${side}, dar prețul e întins`,text:`Prețul este la ${ext.toFixed(1)} ATR de MA50. Intrarea la piață are risc mare; mai sigur este un ordin limită la retragerea spre MA50 (≈ ${fmt(X.ma50[i])}).`};
+  else if(tSign!==dir)v={lvl:'ok',title:`Posibil ${side}, contra trendului`,text:'Momentumul indică într-o parte, dar mediile 50/100/200 arată invers. Șanse mai mici și risc mai mare; redu mărimea pozitiei.'};
+  else if(abs>=55)v={lvl:'good',title:`Da: intrare ${side} cu semnal puternic`,text:'Trendul, momentumul și MACD sunt aliniate în aceeași direcție și prețul nu este întins.'};
+  else v={lvl:'ok',title:`Da, moderat: ${side}`,text:'Direcția e susținută de indicatori, dar nu toți sunt aliniați. Intră doar cu risc redus sau așteaptă confirmarea.'};
+  const thr=abs>=55?55:30,slA=dist/a;
+  const f=k=>{const s=X.score[k];return fin(s)&&Math.sign(s)===dir&&Math.abs(s)>=thr};
+  const bt1=backtest(X,dir,slA,1.5*slA,f),bt2=backtest(X,dir,slA,2.5*slA,f),base1=backtest(X,dir,slA,1.5*slA,()=>true);
+  return{i,dir,side,score:d.total,abs,parts:d.parts,a,c,ext,entry,sl,tp1,tp2,dist,slA,v,thr,bt1,bt2,base1,limit:X.ma50[i]}}
+
+/* ---------- formatare ---------- */
+const dec=()=>INSTR[S.sym].dec;
+function fmt(v,d){if(!fin(v))return '–';return v.toLocaleString('ro-RO',{minimumFractionDigits:d??dec(),maximumFractionDigits:d??dec(),useGrouping:false})}
+const pct=v=>fin(v)?(v*100).toFixed(0)+'%':'–';
+const p2=n=>String(n).padStart(2,'0');
+function tfmt(ts,full){const d=new Date(ts*1000);const dm=p2(d.getDate())+'.'+p2(d.getMonth()+1);
+  if(S.tf==='1d')return dm+'.'+String(d.getFullYear()).slice(2);return dm+' '+p2(d.getHours())+':'+p2(d.getMinutes())}
+function ago(ts){const s=Math.max(0,Date.now()/1000-ts);if(s<90)return 'acum un minut';if(s<3600)return `acum ${Math.round(s/60)} min`;if(s<86400)return `acum ${Math.round(s/3600)} h`;return `acum ${Math.round(s/86400)} zile`}
+const distTxt=(d)=>{const I=INSTR[S.sym];const v=d/I.unit;return I.unitName==='$'?`${fmt(d,2)} $`:`${fmt(v,I.unitName==='pips'?1:1)} ${I.unitName}`};
+
+/* ---------- încărcare date ---------- */
+async function api(path){const r=await fetch(path,{cache:'no-store'});let j;try{j=await r.json()}catch(e){throw new Error('Serverul local nu răspunde. Pornește Start_Mac.command și lasă fereastra deschisă.')}
+  if(!r.ok)throw new Error(j.error||('Eroare '+r.status));return j}
+let inC=false,inQ=false;
+async function loadCandles(){
+  if(inC)return;inC=true;
+  const sym=S.sym,tf=S.tf;
+  try{const j=await api(`/api/candles?sym=${sym}&tf=${tf}`);if(sym!==S.sym||tf!==S.tf)return;
+    S.bars=j;S.err=null;S.lastOk=Date.now();recompute()}
+  catch(e){S.err=e.message}
+  inC=false;renderStatus()}
+async function loadQuotes(){if(inQ)return;inQ=true;try{S.quotes=await api('/api/quotes');renderTabs();renderPriceHead();renderFtmoOut()}catch(e){}inQ=false}
+const newsCache={};
+async function loadNews(){
+  const key=S.newsTab==='sym'?S.sym:'MACRO';
+  try{newsCache[key]=await api('/api/news?sym='+key)}catch(e){newsCache[key]={error:e.message}}
+  renderNews()}
+
+function recompute(){
+  if(!S.bars||!S.bars.bars.length)return;
+  S.X=compute(S.bars.bars,S.maType);S.plan=makePlan(S.X);
+  renderPriceHead();renderSignal();syncFtmo();renderPos(false);drawCharts();renderStatus()}
+
+/* ---------- interfață: taburi și status ---------- */
+function renderTabs(){
+  $('#symTabs').innerHTML=SYMS.map(s=>{const q=S.quotes[s],I=INSTR[s];let p='–',c='',cl='';
+    if(q&&q.price){p=fmt(q.price,I.dec);if(q.prev){const ch=(q.price/q.prev-1)*100;c=(ch>=0?'+':'')+ch.toFixed(2).replace('.',',')+'%';cl=ch>=0?'up':'down'}}
+    return `<button class="tab" type="button" data-sym="${s}" aria-pressed="${s===S.sym}"><span class="n">${I.label}</span><span class="p">${p}<i class="${cl}">${c}</i></span></button>`}).join('');
+  $('#tfTabs').innerHTML=TFS.map(t=>`<button class="tab tf" type="button" data-tf="${t}" aria-pressed="${t===S.tf}">${t==='1d'?'Zi':t}</button>`).join('')}
+function renderStatus(){
+  const el=$('#status');
+  if(S.err){el.innerHTML=`<span class="dot bad"></span>Fără conexiune la date<br><span style="color:var(--down)">${S.err}</span>`;return}
+  if(!S.bars){el.textContent='Se încarcă…';return}
+  const last=S.bars.bars[S.bars.bars.length-1][0],age=Date.now()/1000-last,lim=S.tf==='1d'?5*86400:Math.max(3*TFSEC[S.tf],1800);
+  const old=age>lim;
+  el.innerHTML=`<span class="dot ${old?'old':''}"></span>${old?'Piață închisă sau date întârziate':'Live'} · ultima lumânare ${tfmt(last)}<br>Actualizat ${new Date(S.lastOk).toLocaleTimeString('ro-RO')} · ${S.bars.source} · ${S.bars.bars.length} lumânări`}
+function renderPriceHead(){
+  const I=INSTR[S.sym];$('#phName').textContent=I.label+' · '+I.ftmo;
+  const q=S.quotes[S.sym],b=S.bars;const price=(b&&b.price)||(q&&q.price),prev=(b&&b.prevClose)||(q&&q.prev);
+  $('#phPrice').textContent=fmt(price);
+  const el=$('#phChg');if(price&&prev){const ch=(price/prev-1)*100;el.textContent=(ch>=0?'+':'')+ch.toFixed(2).replace('.',',')+'% azi';el.className='mono '+(ch>=0?'up':'down')}else el.textContent=''}
+
+/* ---------- card semnal ---------- */
+function chip(t,c){return `<span class="chip ${c}">${t}</span>`}
+function renderSignal(){
+  const P=S.plan,X=S.X,el=$('#signalCard');
+  if(!P){el.innerHTML='<h2>Analiză</h2><p class="muted">Nu sunt suficiente lumânări pentru MA200 pe acest timeframe.</p>';return}
+  const i=P.i,I=INSTR[S.sym];
+  const tagc=P.abs<30?'flat':P.dir>0?'long':'short',tagt=P.abs<30?'FĂRĂ SEMNAL':P.side;
+  const pos=(P.score+100)/200*100;
+  const rows=[];
+  const ma=(n,v)=>rows.push([`MA ${n} (${S.maType})`,fmt(v),X.c[i]>v?chip('preț peste','b'):chip('preț sub','s')]);
+  ma(50,X.ma50[i]);ma(100,X.ma100[i]);ma(200,X.ma200[i]);
+  const r=X.rsi[i];rows.push(['RSI 14',fmt(r,1),r>=70?chip('supracumpărat','w'):r<=30?chip('supravândut','w'):r>55?chip('bullish','b'):r<45?chip('bearish','s'):chip('neutru','n')]);
+  const k=X.k[i],d=X.d[i];rows.push(['StochRSI K / D',`${fmt(k,1)} / ${fmt(d,1)}`,k>85?chip('supracumpărat','w'):k<15?chip('supravândut','w'):k>d?chip('K peste D','b'):chip('K sub D','s')]);
+  rows.push(['MACD / Semnal',`${fmt(X.macd[i],I.dec+1)} / ${fmt(X.sig[i],I.dec+1)}`,X.macd[i]>X.sig[i]?chip('bullish','b'):chip('bearish','s')]);
+  rows.push(['Histogramă MACD',fmt(X.hist[i],I.dec+1),X.hist[i]>X.hist[i-1]?chip('crește','b'):chip('scade','s')]);
+  rows.push(['ATR 14',fmt(X.atr[i]),chip('volatilitate','n')]);
+  const bt=(b,rr)=>b.N?`${pct(b.p)} <span class="muted" style="font-size:11px">(${b.w}/${b.N})</span>`:'–';
+  const small=P.bt1.N<30;
+  const showPlan=P.abs>=30;
+  el.innerHTML=`<h2>Analiză · ${I.label} · ${S.tf==='1d'?'Zi':S.tf}</h2>
+  <div class="verdict v-${P.v.lvl}"><span class="tag ${tagc}">${tagt}</span><div><h3>${P.v.title}</h3><p>${P.v.text}</p></div></div>
+  <div class="meter"><i style="left:${pos}%"></i></div>
+  <div class="meterlab"><span>Short −100</span><span class="mono">scor ${P.score>0?'+':''}${P.score}</span><span>Long +100</span></div>
+  <ul class="why"><li>Trend MA: <b class="${P.parts.trend.v>0?'up':'down'}">${P.parts.trend.v>0?'+':''}${P.parts.trend.v}</b> / 40</li><li>RSI: <b class="${P.parts.rsi.v>0?'up':'down'}">${P.parts.rsi.v>0?'+':''}${P.parts.rsi.v}</b> / 20</li><li>StochRSI: <b class="${P.parts.stoch.v>0?'up':'down'}">${P.parts.stoch.v>0?'+':''}${P.parts.stoch.v}</b> / 20</li><li>MACD: <b class="${P.parts.macd.v>0?'up':'down'}">${P.parts.macd.v>0?'+':''}${P.parts.macd.v}</b> / 20</li></ul>
+  <h2 style="margin-top:16px">Plan de intrare recomandat ${showPlan?'':'(orientativ, semnal slab)'}</h2>
+  <table class="plan"><tr><td>${P.side==='LONG'?'Intrare Long':'Intrare Short'}</td><td>${fmt(P.entry)}</td><td>la piață</td></tr>
+  ${P.v.lvl==='wait'?`<tr><td>Intrare limită (retragere)</td><td>${fmt(P.limit)}</td><td>MA50</td></tr>`:''}
+  <tr><td>Stop loss</td><td class="down">${fmt(P.sl)}</td><td>${distTxt(P.dist)}</td></tr>
+  <tr><td>Take profit 1</td><td class="up">${fmt(P.tp1)}</td><td>1 : 1,5</td></tr>
+  <tr><td>Take profit 2</td><td class="up">${fmt(P.tp2)}</td><td>1 : 2,5</td></tr></table>
+  <h2 style="margin-top:16px">Ce spune istoricul pentru acest plan</h2>
+  <div class="stat"><div><div class="k">Succes până la TP1</div><div class="v">${bt(P.bt1)}</div></div><div><div class="k">Succes până la TP2</div><div class="v">${bt(P.bt2)}</div></div><div><div class="k">Fără semnal (bază)</div><div class="v muted">${bt(P.base1)}</div></div></div>
+  <p class="note">${P.bt1.N?`Semnale similare (${P.dir>0?'Long':'Short'}, scor ≥ ${P.thr}) pe ultimele ${X.c.length} lumânări: ${P.bt1.N} cazuri, interval 95% pentru TP1: ${pct(P.bt1.lo)}–${pct(P.bt1.hi)}, câștig mediu ${P.bt1.exp>=0?'+':''}${fmt(P.bt1.exp,2)} R. Pragul de rentabilitate la 1:1,5 este 40%.`:'Prea puține semnale similare în istoricul încărcat.'} ${small?'<b class="warn">Eșantion mic, ia procentul cu prudență.</b>':''}</p>
+  <div class="row"><button class="btn" id="toFtmo" type="button">Trimite planul în calculatorul FTMO</button><button class="btn" id="toPos" type="button">Testează-l ca poziție</button></div>
+  <h2 style="margin-top:16px">Indicatori</h2>
+  <table>${rows.map(r=>`<tr><td>${r[0]}</td><td class="mono">${r[1]}</td><td style="width:1%;white-space:nowrap">${r[2]}</td></tr>`).join('')}</table>`;
+  $('#toFtmo').onclick=()=>{$('#f_sync').checked=true;S.sync=true;syncFtmo(true);$('#f_entry').scrollIntoView({behavior:'smooth',block:'center'})};
+  $('#toPos').onclick=()=>{fillPos();runPos();$('#p_go').scrollIntoView({behavior:'smooth',block:'center'})}}
+
+/* ---------- poziția mea ---------- */
+function fillPos(){const P=S.plan;if(!P)return;$('#p_dir').value=String(P.dir);$('#p_entry').value=P.entry.toFixed(dec());$('#p_sl').value=P.sl.toFixed(dec());$('#p_tp').value=P.tp1.toFixed(dec())}
+function runPos(){S.posRes=true;renderPos(true)}
+function renderPos(force){
+  const out=$('#p_out');
+  if(!S.posRes&&!force){out.innerHTML='<p class="note">Completează direcția, intrarea, SL și TP, apoi apasă butonul. Rata este calculată pe istoricul instrumentului și timeframe-ului selectat.</p>';return}
+  const X=S.X,P=S.plan;if(!X||!P){return}
+  const dir=+$('#p_dir').value,e=+$('#p_entry').value,sl=+$('#p_sl').value,tp=+$('#p_tp').value;
+  if(![e,sl,tp].every(v=>v>0)){out.innerHTML='<div class="alert a">Completează intrarea, stop loss și take profit.</div>';return}
+  if(dir>0?!(sl<e&&tp>e):!(sl>e&&tp<e)){out.innerHTML='<div class="alert r">Nivelurile nu se potrivesc direcției: la Long SL e sub intrare și TP deasupra, la Short invers.</div>';return}
+  const a=X.atr[X.atr.length-1],slA=Math.abs(e-sl)/a,tpA=Math.abs(tp-e)/a,rr=tpA/slA,be=1/(1+rr);
+  const cur=X.score[X.score.length-1],aligned=Math.sign(cur)===dir&&Math.abs(cur)>=30;
+  const f=k=>{const s=X.score[k];return fin(s)&&Math.sign(s)===dir&&Math.abs(s)>=30};
+  const bs=backtest(X,dir,slA,tpA,f),bb=backtest(X,dir,slA,tpA,()=>true);
+  let cls='a',msg='';
+  if(bs.N<15){msg='Prea puține semnale similare în istoric pentru o estimare stabilă. Folosește rata de bază ca reper.'}
+  else if(bs.p>be+0.05&&bs.exp>0){cls='g';msg='Istoricul favorizează această configurație: rata de succes depășește pragul de rentabilitate.'}
+  else if(bs.p<be){cls='r';msg='Istoricul este nefavorabil: rata de succes e sub pragul de rentabilitate pentru acest raport risc/câștig.'}
+  else msg='La limită: avantajul față de pragul de rentabilitate este mic.';
+  const warnDir=aligned?`Indicatorii de acum susțin direcția aleasă (scor ${cur>0?'+':''}${cur}).`:`Indicatorii de acum nu susțin această direcție (scor ${cur>0?'+':''}${cur}); rata de mai jos se aplică doar când ei se aliniază.`;
+  const tight=slA<0.8?'<div class="alert a">SL foarte strâns față de volatilitatea actuală (sub 0,8 ATR): riști să fii scos de zgomot.</div>':'';
+  out.innerHTML=`<div class="stat"><div><div class="k">Rată estimată (semnal)</div><div class="v ${bs.p>be?'up':'down'}">${pct(bs.p)}</div></div><div><div class="k">Prag rentabilitate</div><div class="v">${pct(be)}</div></div><div><div class="k">Raport R:R</div><div class="v">1 : ${fmt(rr,2)}</div></div></div>
+  <div class="alert ${cls}">${msg}</div>${tight}
+  <p class="note">${warnDir}<br>Cu semnal similar: ${bs.N} cazuri (${bs.w} TP, ${bs.l} SL, ${bs.to} expirate), interval 95% ${pct(bs.lo)}–${pct(bs.hi)}, câștig mediu ${bs.exp>=0?'+':''}${fmt(bs.exp,2)} R. Fără filtrare (intrare oricând, aceeași geometrie): ${pct(bb.p)} din ${bb.N} cazuri. Distanțe: SL ${fmt(slA,1)} ATR, TP ${fmt(tpA,1)} ATR.</p>`}
+
+/* ---------- calculator FTMO ---------- */
+const FIDS=['f_size','f_ccy','f_phase','f_equity','f_pl','f_risk'];
+function toUSD(ccy){const q=S.quotes;const eu=q.EURUSD&&q.EURUSD.price,jp=q.USDJPY&&q.USDJPY.price,gb=q.GBPUSD&&q.GBPUSD.price;
+  if(ccy==='USD')return 1;if(ccy==='EUR')return eu||NaN;if(ccy==='JPY')return jp?1/jp:NaN;if(ccy==='GBP')return gb||NaN;return NaN}
+function syncFtmo(force){
+  const I=INSTR[S.sym],lv=store.get('lot_'+S.sym,I.lotVal);
+  if(document.activeElement!==$('#f_lotval'))$('#f_lotval').value=lv;
+  $('#f_lvl').firstChild.textContent=`Valoare 1 lot per 1,00 mișcare de preț (${I.quote}) `;
+  const P=S.plan;if(P&&($('#f_sync').checked||force)){$('#f_entry').value=P.entry.toFixed(dec());$('#f_sl').value=P.sl.toFixed(dec());$('#f_tp').value=P.tp1.toFixed(dec())}
+  renderFtmoOut()}
+function renderFtmoOut(){
+  const out=$('#f_out'),I=INSTR[S.sym];
+  const size=+$('#f_size').value,eq=+$('#f_equity').value||size,pl=+$('#f_pl').value||0,riskP=+$('#f_risk').value,
+    e=+$('#f_entry').value,sl=+$('#f_sl').value,tp=+$('#f_tp').value,lv=+$('#f_lotval').value,ccy=$('#f_ccy').value,target=+$('#f_phase').value;
+  if(!(size>0)){out.innerHTML='<p class="note">Introdu mărimea contului.</p>';return}
+  const dailyLim=size*0.05,usedToday=Math.max(0,-pl),remDaily=dailyLim-usedToday,remTotal=eq-size*0.9,avail=Math.min(remDaily,remTotal);
+  const budget=size*riskP/100;
+  let html='';
+  const conv=toUSD(I.quote)/toUSD(ccy);
+  const dist=Math.abs(e-sl);
+  if(!(e>0&&sl>0&&dist>0)){html+='<p class="note">Introdu prețul de intrare și stop loss ca să obții mărimea loturilor.</p>'}
+  else if(!fin(conv)||!(lv>0)){html+='<div class="alert a">Aștept cursul valutar pentru conversie. Reîncearcă în câteva secunde.</div>'}
+  else{
+    const perLot=dist*lv*conv,raw=budget/perLot,lots=Math.floor(raw*100)/100,real=lots*perLot;
+    const tpP=tp>0?Math.abs(tp-e)*lv*conv*lots:NaN;
+    const sym=ccy==='EUR'?'€':'$';
+    let al='';
+    if(lots<0.01)al=`<div class="alert r">Cu ${fmt(riskP,2)}% risc și acest SL, mărimea cade sub 0,01 lot. Riscul minim posibil ar fi ${sym}${(0.01*perLot).toFixed(2)}.</div>`;
+    else if(real>avail)al=`<div class="alert r">NU INTRA: riscul de ${sym}${real.toFixed(2)} depășește bufferul rămas de ${sym}${Math.max(0,avail).toFixed(2)} până la o limită FTMO.</div>`;
+    else if(real>0.5*avail)al=`<div class="alert a">Riscul consumă peste jumătate din bufferul rămas (${sym}${avail.toFixed(2)}). Ia în calcul un risc mai mic.</div>`;
+    else al=`<div class="alert g">Riscul de ${sym}${real.toFixed(2)} încape confortabil în bufferul rămas.</div>`;
+    html+=`<div class="stat"><div><div class="k">Mărime poziție</div><div class="v">${lots.toFixed(2)} lot</div></div><div><div class="k">Risc real</div><div class="v down">${sym}${real.toFixed(2)}</div></div><div><div class="k">Profit la TP</div><div class="v up">${fin(tpP)?sym+tpP.toFixed(2):'–'}</div></div></div>${al}
+    <p class="note">Ai ales ${fmt(riskP,2)}% din ${sym}${size.toLocaleString('ro-RO')} = ${sym}${budget.toFixed(2)}. Distanță SL ${fmt(dist)} (${distTxt(dist)}), risc per lot ${sym}${perLot.toFixed(2)}. ${fin(tpP)?'R:R '+(Math.abs(tp-e)/dist).toFixed(2).replace('.',',')+'.':''}</p>`}
+  const prog=target>0?clamp((eq-size)/(size*target/100),0,1):0;
+  html+=`<h2 style="margin-top:14px">Limite FTMO</h2><table>
+  <tr><td>Pierdere zilnică maximă (5%)</td><td class="mono">${(ccy==='EUR'?'€':'$')}${dailyLim.toFixed(2)}</td></tr>
+  <tr><td>Rămas azi</td><td class="mono ${remDaily<=0?'down':''}">${(ccy==='EUR'?'€':'$')}${remDaily.toFixed(2)}</td></tr>
+  <tr><td>Pierdere totală maximă (10%) · nivel ${(size*0.9).toLocaleString('ro-RO')}</td><td class="mono">${(ccy==='EUR'?'€':'$')}${(size*0.1).toFixed(2)}</td></tr>
+  <tr><td>Rămas până la limita totală</td><td class="mono ${remTotal<=0?'down':''}">${(ccy==='EUR'?'€':'$')}${remTotal.toFixed(2)}</td></tr>
+  ${target>0?`<tr><td>Țintă de profit (${target}%)</td><td class="mono">${(ccy==='EUR'?'€':'$')}${(size*target/100).toFixed(2)}</td></tr></table><div class="bar"><i style="width:${prog*100}%"></i></div><p class="note">Progres către țintă: ${(prog*100).toFixed(0)}%. Minim 4 zile de tranzacționare.</p>`:'</table>'}
+  <p class="note">Regulile sunt cele standard FTMO cunoscute la data construirii paginii (5% zilnic, 10% total, țintă 10% / 5%). Confirmă-le în contul tău, pot fi modificate. Valoarea lotului diferă între simboluri și conturi (mai ales la Nikkei și DAX): verifică-o în specificația simbolului din platformă și corectează-o în câmpul de mai sus înainte să folosești mărimea calculată.</p>`;
+  out.innerHTML=html}
+
+/* ---------- știri ---------- */
+function renderNews(){
+  const key=S.newsTab==='sym'?S.sym:'MACRO';
+  $('#newsTabs').innerHTML=`<button class="tab tf" type="button" data-nt="sym" aria-pressed="${S.newsTab==='sym'}">${INSTR[S.sym].label}</button><button class="tab tf" type="button" data-nt="macro" aria-pressed="${S.newsTab==='macro'}">Macro (Fed, dolar)</button>`;
+  $('#newsTitle').textContent='Știri TradingView, traduse în română';
+  const d=newsCache[key],ul=$('#newsList');
+  if(!d){ul.innerHTML='<li class="muted">Se încarcă știrile…</li>';return}
+  if(d.error){ul.innerHTML=`<li class="down">Nu pot încărca știrile: ${d.error}</li>`;return}
+  if(!d.length){ul.innerHTML='<li class="muted">Nu sunt știri recente pentru această căutare.</li>';return}
+  ul.innerHTML=d.map(n=>`<li><a href="${n.link}" target="_blank" rel="noopener noreferrer" title="${(n.title_en||'').replace(/</g,'&lt;').replace(/"/g,'&quot;')}">${n.title.replace(/</g,'&lt;')}</a><small>${(n.source||'').replace(/</g,'&lt;')} · ${ago(n.ts)}${n.translated===false?' · netradus (în engleză)':''}</small></li>`).join('')}
+
+/* ---------- grafice ---------- */
+const C={};function readColors(){const cs=getComputedStyle(document.documentElement);['bg','panel','line','text','muted','up','down','warn','accent','ma50','ma100','ma200'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim())}
+const PAD={l:8,r:66};
+function cv(id,h){const c=$(id),dpr=window.devicePixelRatio||1,w=c.parentElement.clientWidth;c.style.height=h+'px';c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.font='11px '+getComputedStyle(document.body).getPropertyValue('--mono');return{g,w,h}}
+function drawCharts(){
+  const X=S.X;if(!X)return;readColors();
+  const n=X.c.length,count=Math.min(S.view.count,n);S.view.off=clamp(S.view.off,0,Math.max(0,n-count));
+  const end=n-1-S.view.off,start=end-count+1;
+  const W=$('#charts').clientWidth,bw=(W-PAD.l-PAD.r)/count,xi=i=>PAD.l+(i-start+.5)*bw;
+  S.geo={start,end,bw,count};
+  const hPrice=window.innerWidth<700?260:360;
+  // ---- preț
+  {const{g,w,h}=cv('#cvPrice',hPrice);
+    let lo=Infinity,hi=-Infinity;
+    for(let i=start;i<=end;i++){lo=Math.min(lo,X.l[i]);hi=Math.max(hi,X.h[i]);for(const m of[X.ma50,X.ma100,X.ma200])if(fin(m[i])){lo=Math.min(lo,m[i]);hi=Math.max(hi,m[i])}}
+    const P=S.plan,sp=$('#showPlan').checked&&P&&P.abs>=0;
+    const lines=sp?[[P.entry,C.accent,'Intrare'],[P.sl,C.down,'SL'],[P.tp1,C.up,'TP1'],[P.tp2,C.up,'TP2']]:[];
+    const rng=hi-lo;for(const[l]of lines.slice(0,3)){if(l>lo-rng*.3&&l<hi+rng*.3){lo=Math.min(lo,l);hi=Math.max(hi,l)}}
+    const pad=(hi-lo)*.06;lo-=pad;hi+=pad;
+    const y=v=>4+(hi-v)/(hi-lo)*(h-8);
+    g.fillStyle=C.panel;g.fillRect(0,0,w,h);
+    g.strokeStyle=C.line;g.fillStyle=C.muted;g.textAlign='left';g.lineWidth=1;
+    for(let k=0;k<=5;k++){const v=lo+(hi-lo)*k/5,yy=Math.round(y(v))+.5;g.beginPath();g.moveTo(PAD.l,yy);g.lineTo(w-PAD.r,yy);g.stroke();g.fillText(fmt(v),w-PAD.r+6,yy+4)}
+    for(let i=start;i<=end;i++){const up=X.c[i]>=X.o[i];g.strokeStyle=g.fillStyle=up?C.up:C.down;const x=xi(i);
+      g.beginPath();g.moveTo(Math.round(x)+.5,y(X.h[i]));g.lineTo(Math.round(x)+.5,y(X.l[i]));g.stroke();
+      const t=y(Math.max(X.o[i],X.c[i])),b=y(Math.min(X.o[i],X.c[i]));g.fillRect(x-Math.max(1,bw*.36),t,Math.max(2,bw*.72),Math.max(1,b-t))}
+    for(const[m,col]of[[X.ma50,C.ma50],[X.ma100,C.ma100],[X.ma200,C.ma200]]){g.strokeStyle=col;g.lineWidth=1.5;g.beginPath();let st=false;
+      for(let i=start;i<=end;i++){if(!fin(m[i])){st=false;continue}const xx=xi(i),yy=y(m[i]);if(st)g.lineTo(xx,yy);else{g.moveTo(xx,yy);st=true}}g.stroke()}
+    g.lineWidth=1;
+    for(const[v,col,lab]of lines){if(v<lo||v>hi)continue;g.strokeStyle=col;g.setLineDash([5,4]);g.beginPath();g.moveTo(PAD.l,y(v));g.lineTo(w-PAD.r,y(v));g.stroke();g.setLineDash([]);g.fillStyle=col;g.textAlign='left';g.fillText(lab,PAD.l+4,y(v)-3)}
+    const lp=X.c[n-1];if(lp>=lo&&lp<=hi){const up=lp>=X.o[n-1],col=up?C.up:C.down;g.strokeStyle=col;g.setLineDash([2,3]);g.beginPath();g.moveTo(PAD.l,y(lp));g.lineTo(w-PAD.r,y(lp));g.stroke();g.setLineDash([]);
+      g.fillStyle=col;g.fillRect(w-PAD.r+1,y(lp)-8,PAD.r-2,16);g.fillStyle='#0b0f14';g.textAlign='left';g.fillText(fmt(lp),w-PAD.r+5,y(lp)+4)}
+    g.fillStyle=C.muted;g.textAlign='left';g.fillText(`MA50 ${S.maType}`,PAD.l+4,14);g.fillStyle=C.ma50;g.fillRect(PAD.l+62,8,10,3);
+    g.fillStyle=C.muted;g.fillText('MA100',PAD.l+80,14);g.fillStyle=C.ma100;g.fillRect(PAD.l+120,8,10,3);
+    g.fillStyle=C.muted;g.fillText('MA200',PAD.l+138,14);g.fillStyle=C.ma200;g.fillRect(PAD.l+178,8,10,3);
+    hoverLine(g,h)}
+  // ---- oscilatori
+  const osc=(id,h,title,lo,hi,levels,draw,axis)=>{const{g,w}=cv(id,h);const y=v=>4+(hi-v)/(hi-lo)*(h-(axis?26:8));
+    g.fillStyle=C.panel;g.fillRect(0,0,w,h);g.lineWidth=1;g.textAlign='left';
+    for(const l of levels){g.strokeStyle=C.line;g.beginPath();g.moveTo(PAD.l,Math.round(y(l))+.5);g.lineTo(w-PAD.r,Math.round(y(l))+.5);g.stroke();g.fillStyle=C.muted;g.fillText(fmt(l,l%1?1:0),w-PAD.r+6,y(l)+4)}
+    draw(g,y,w);g.fillStyle=C.muted;g.fillText(title,PAD.l+4,13);
+    if(axis){g.fillStyle=C.muted;g.textAlign='center';const nt=Math.max(2,Math.floor((w-PAD.l-PAD.r)/110));for(let k=0;k<nt;k++){const i=start+Math.round((count-1)*(k+.5)/nt);if(X.t[i]!=null)g.fillText(tfmt(X.t[i]),xi(i),h-6)}}
+    hoverLine(g,h);return{g,y}};
+  const line=(g,y,arr,col,w=1.5)=>{g.strokeStyle=col;g.lineWidth=w;g.beginPath();let st=false;for(let i=start;i<=end;i++){if(!fin(arr[i])){st=false;continue}const xx=xi(i),yy=y(arr[i]);if(st)g.lineTo(xx,yy);else{g.moveTo(xx,yy);st=true}}g.stroke();g.lineWidth=1};
+  osc('#cvRsi',90,'RSI 14',0,100,[30,50,70],(g,y)=>line(g,y,X.rsi,C.accent));
+  osc('#cvStoch',90,'StochRSI 14·14·3·3  (K azuriu, D galben)',0,100,[20,50,80],(g,y)=>{line(g,y,X.k,C.accent);line(g,y,X.d,C.warn)});
+  let mlo=Infinity,mhi=-Infinity;for(let i=start;i<=end;i++)for(const a of[X.macd,X.sig,X.hist])if(fin(a[i])){mlo=Math.min(mlo,a[i]);mhi=Math.max(mhi,a[i])}
+  if(!fin(mlo)){mlo=-1;mhi=1}const mp=(mhi-mlo)*.1||1e-9;mlo-=mp;mhi+=mp;
+  osc('#cvMacd',116,'MACD 12·26·9',mlo,mhi,[0],(g,y)=>{for(let i=start;i<=end;i++){if(!fin(X.hist[i]))continue;g.fillStyle=X.hist[i]>=0?C.up:C.down;g.globalAlpha=.55;const y0=y(0),y1=y(X.hist[i]);g.fillRect(xi(i)-Math.max(1,bw*.35),Math.min(y0,y1),Math.max(2,bw*.7),Math.abs(y1-y0)||1)}g.globalAlpha=1;line(g,y,X.macd,C.accent);line(g,y,X.sig,C.warn)},true);
+  readout()}
+function hoverLine(g,h){const G=S.geo;if(S.hover==null||!G||S.hover<G.start||S.hover>G.end)return;const x=Math.round(PAD.l+(S.hover-G.start+.5)*G.bw)+.5;g.strokeStyle=C.muted;g.setLineDash([3,3]);g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();g.setLineDash([])}
+function readout(){
+  const X=S.X;if(!X)return;const i=S.hover!=null&&S.geo&&S.hover>=S.geo.start&&S.hover<=S.geo.end?S.hover:X.c.length-1;
+  const d=dec(),cls=X.c[i]>=X.o[i]?'up':'down';
+  $('#readout').innerHTML=`<span><b>${tfmt(X.t[i])}</b></span><span>O <b>${fmt(X.o[i])}</b></span><span>H <b>${fmt(X.h[i])}</b></span><span>L <b>${fmt(X.l[i])}</b></span><span>C <b class="${cls}">${fmt(X.c[i])}</b></span>
+  <span style="color:var(--ma50)">MA50 <b>${fmt(X.ma50[i])}</b></span><span style="color:var(--ma100)">MA100 <b>${fmt(X.ma100[i])}</b></span><span style="color:var(--ma200)">MA200 <b>${fmt(X.ma200[i])}</b></span>
+  <span>RSI <b>${fmt(X.rsi[i],1)}</b></span><span>K/D <b>${fmt(X.k[i],1)}/${fmt(X.d[i],1)}</b></span><span>MACD <b>${fmt(X.macd[i],d+1)}</b> S <b>${fmt(X.sig[i],d+1)}</b></span>`}
+
+/* ---------- evenimente ---------- */
+function setSym(s){S.sym=s;store.set('sym',s);S.bars=null;S.X=null;S.plan=null;S.posRes=null;S.view.off=0;$('#f_sync').checked=true;
+  renderTabs();renderPriceHead();$('#signalCard').innerHTML='<h2>Analiză</h2><p class="muted">Se încarcă datele…</p>';
+  $('#f_lotval').value=store.get('lot_'+s,INSTR[s].lotVal);loadCandles();S.newsTab==='sym'?loadNews():0;renderNews()}
+function setTf(t){S.tf=t;store.set('tf',t);S.bars=null;S.X=null;S.plan=null;S.view.off=0;renderTabs();$('#signalCard').innerHTML='<h2>Analiză</h2><p class="muted">Se încarcă datele…</p>';loadCandles()}
+$('#symTabs').addEventListener('click',e=>{const b=e.target.closest('[data-sym]');if(b)setSym(b.dataset.sym)});
+$('#tfTabs').addEventListener('click',e=>{const b=e.target.closest('[data-tf]');if(b)setTf(b.dataset.tf)});
+$('#newsTabs').addEventListener('click',e=>{const b=e.target.closest('[data-nt]');if(b){S.newsTab=b.dataset.nt;renderNews();loadNews()}});
+$('#maType').value=S.maType;$('#maType').onchange=e=>{S.maType=e.target.value;store.set('maType',S.maType);recompute()};
+$('#showPlan').onchange=drawCharts;
+$('#zIn').onclick=()=>{S.view.count=Math.max(30,Math.round(S.view.count*.8));drawCharts()};
+$('#zOut').onclick=()=>{S.view.count=Math.min(600,Math.round(S.view.count*1.25));drawCharts()};
+$('#zEnd').onclick=()=>{S.view.off=0;drawCharts()};
+const ch=$('#charts');
+ch.addEventListener('wheel',e=>{e.preventDefault();S.view.count=clamp(Math.round(S.view.count*(e.deltaY>0?1.12:.89)),30,600);drawCharts()},{passive:false});
+let drag=null;
+ch.addEventListener('pointerdown',e=>{drag={x:e.clientX,off:S.view.off};ch.setPointerCapture(e.pointerId)});
+ch.addEventListener('pointerup',()=>drag=null);
+ch.addEventListener('pointerleave',()=>{if(!drag){S.hover=null;drawCharts()}});
+ch.addEventListener('pointermove',e=>{if(!S.geo)return;const r=ch.getBoundingClientRect(),G=S.geo;
+  if(drag){S.view.off=drag.off+Math.round((e.clientX-drag.x)/G.bw);drawCharts();return}
+  const i=G.start+Math.floor((e.clientX-r.left-PAD.l)/G.bw);S.hover=(i>=G.start&&i<=G.end)?i:null;drawCharts()});
+$('#p_go').onclick=runPos;$('#p_fill').onclick=()=>{fillPos();runPos()};
+['p_dir','p_entry','p_sl','p_tp'].forEach(id=>$('#'+id).addEventListener('input',()=>{if(S.posRes)renderPos(true)}));
+/* FTMO: valori salvate */
+FIDS.forEach(id=>{const v=store.get(id,null);if(v!==null)$('#'+id).value=v});
+if(!$('#f_size').value)$('#f_size').value=100000;if(!$('#f_risk').value)$('#f_risk').value=0.5;if(!$('#f_equity').value)$('#f_equity').value=$('#f_size').value;
+FIDS.forEach(id=>$('#'+id).addEventListener('input',()=>{store.set(id,$('#'+id).value);renderFtmoOut()}));
+$('#f_size').addEventListener('input',()=>{if(!store.get('f_equity',null)){$('#f_equity').value=$('#f_size').value;renderFtmoOut()}});
+['f_entry','f_sl','f_tp'].forEach(id=>$('#'+id).addEventListener('input',()=>{$('#f_sync').checked=false;renderFtmoOut()}));
+$('#f_sync').addEventListener('change',()=>syncFtmo());
+$('#f_lotval').addEventListener('input',()=>{store.set('lot_'+S.sym,+$('#f_lotval').value);renderFtmoOut()});
+window.addEventListener('resize',()=>drawCharts());
+
+/* ---------- pornire ---------- */
+renderTabs();renderPriceHead();renderNews();renderPos(false);
+$('#f_lotval').value=store.get('lot_'+S.sym,INSTR[S.sym].lotVal);
+loadCandles();loadQuotes();loadNews();
+setInterval(loadNews,180000);setInterval(renderStatus,5000);
+</script>
+
+<!--SHELL-JS--><script>(function(){
+try{document.querySelectorAll('.tabbar a').forEach(a=>{if(a.dataset.p===location.pathname||(a.dataset.p==='/'&&location.pathname==='/macro'))a.setAttribute('aria-current','page')})}catch(e){}
+try{if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('/sw.js')}catch(e){}
+const box=document.getElementById('offline');let stale=0;
+function show(){if(!box)return;if(stale){box.className='old';box.style.display='block';box.textContent=stale}else{box.style.display='none'}}
+const of=window.fetch;
+let qFirst=1;function qGet(){try{return localStorage.getItem('pq')}catch(e){return null}}
+window.fetch=function(){const a0=arguments;const u0=String(a0[0]);
+ if(u0.indexOf('/api/quotes')>=0){const c=qFirst?qGet():null;qFirst=0;
+  const sv=r=>{if(r.ok)r.clone().text().then(t=>{try{localStorage.setItem('pq',t)}catch(e){}}).catch(()=>{});return r};
+  if(c){of.apply(this,a0).then(sv).catch(()=>{});return Promise.resolve(new Response(c,{status:200,headers:{'Content-Type':'application/json'}}))}
+  return of.apply(this,a0).then(sv)}
+ return of.apply(this,arguments).then(r=>{try{const u=String(arguments[0]);if(u.indexOf('/api/')>=0&&u.indexOf('/api/status')<0){const a=r.headers.get('X-Age');if(r.headers.get('X-Stale')){const m=Math.round((+a||0)/60);stale='Date vechi'+(m>0?' de '+m+' min':'')+' – sursa nu trimite date acum.';show()}}}catch(e){}return r})};
+async function chk(){try{const r=await of('/api/status');if(!r.ok)return;const j=await r.json();
+ if(j.agent_age==null||j.agent_age>75){stale='Sursa de date FTMO nu răspunde momentan; vezi ultimele date primite. Serverul reîncearcă singur.';box.className='';box.style.display='block';box.textContent=stale}
+ else{stale=0;show()}}catch(e){}}
+setInterval(chk,20000);setTimeout(chk,1500);
+})();
+</script><!--/SHELL-JS-->
+<!--FAST-JS--><script>/* ===== strat rapid: cache lumânări, actualizare parțială (tail), tick live din cotații, preîncărcare ===== */
+const CC=new Map();                      // "SYM|tf" -> {j, t}
+const rawApi=api;
+const CK=(s,t)=>s+'|'+t;
+async function fullFetch(sym,tf){const j=await rawApi(`/api/candles?sym=${sym}&tf=${tf}`);CC.set(CK(sym,tf),{j,t:Date.now()});return j}
+async function tailMerge(sym,tf){
+  const e=CC.get(CK(sym,tf));if(!e)return fullFetch(sym,tf);
+  const t=await rawApi(`/api/candles?sym=${sym}&tf=${tf}&tail=1`);
+  if(!t||!t.bars||!t.bars.length)return e.j;
+  const bars=e.j.bars,last=bars[bars.length-1][0],t0=t.bars[0][0];
+  if(t0-last>40*TFSEC[tf])return fullFetch(sym,tf);              // gol prea mare: reia complet
+  let i=bars.length;while(i>0&&bars[i-1][0]>=t0)i--;
+  e.j.bars=bars.slice(0,i).concat(t.bars);e.j.price=t.price;e.j.time=t.time;e.j.source=t.source||e.j.source;e.t=Date.now();
+  return e.j}
+// orice cerere de lumânări din pagină (inclusiv TF mare) trece prin cache
+api=async function(path){
+  const m=/^\/api\/candles\?sym=(\w+)&tf=(\w+)$/.exec(path);
+  if(!m)return rawApi(path);
+  const e=CC.get(CK(m[1],m[2]));
+  if(e&&Date.now()-e.t<30000)return e.j;
+  return e?tailMerge(m[1],m[2]):fullFetch(m[1],m[2])};
+loadCandles=async function(){
+  if(inC)return;inC=true;const sym=S.sym,tf=S.tf,e=CC.get(CK(sym,tf));
+  try{
+    if(e&&(!S.bars||S.bars.sym!==sym||S.bars.tf!==tf)){S.bars=e.j;S.err=null;S.lastOk=Date.now();recompute()}   // desen instant din cache
+    const j=await(e?tailMerge(sym,tf):fullFetch(sym,tf));
+    if(sym!==S.sym||tf!==S.tf)return;
+    S.bars=j;S.err=null;S.lastOk=Date.now();recompute();prefetchSoon()
+  }catch(err){if(sym===S.sym&&tf===S.tf)S.err=err.message}
+  finally{inC=false;renderStatus()}};
+const redraw=()=>{try{(typeof drawCharts==='function'?drawCharts:drawChart)()}catch(e){}};
+function liveTick(){
+  const b=S.bars,X=S.X;if(!b||!X||!b.bars.length)return;const q=S.quotes[S.sym];if(!q||!q.price)return;
+  const bars=b.bars,L=bars[bars.length-1],n=X.n;if(n!==bars.length)return;
+  if(Date.now()/1000>=L[0]+TFSEC[S.tf])return;                    // lumânare nouă: așteaptă datele
+  const p=q.price;if(p===L[4])return;
+  L[4]=p;if(p>L[2])L[2]=p;if(p<L[3])L[3]=p;b.price=p;
+  X.c[n-1]=p;if(p>X.h[n-1])X.h[n-1]=p;if(p<X.l[n-1])X.l[n-1]=p;
+  renderPriceHead();redraw()}
+loadQuotes=async function(){if(inQ)return;inQ=true;try{S.quotes=await rawApi('/api/quotes');renderTabs();liveTick();renderFtmoOut()}catch(e){}inQ=false};
+// ritm de actualizare
+const vis=()=>!document.hidden;
+setInterval(()=>{if(vis())loadQuotes()},1500);
+let ctick=0;setInterval(()=>{if(!vis())return;ctick++;const fast=TFSEC[S.tf]<=900;if(fast?ctick%4===0:ctick%10===0)loadCandles()},1000);
+let bnd=0;setInterval(()=>{if(!vis()||!S.bars||!S.bars.bars.length)return;const L=S.bars.bars[S.bars.bars.length-1][0];
+  if(Date.now()/1000>=L+TFSEC[S.tf]+2&&bnd!==L){bnd=L;loadCandles()}},1000);
+document.addEventListener('visibilitychange',()=>{if(vis()){loadQuotes();loadCandles()}});
+// preîncărcare în fundal: celelalte instrumente pe TF-ul curent, apoi celelalte TF-uri pe instrumentul curent
+let pfT=null,pfDone={};
+function prefetchSoon(){if(pfT)return;pfT=setTimeout(async()=>{pfT=null;
+  const jobs=[];for(const s of SYMS)if(s!==S.sym)jobs.push([s,S.tf]);for(const t of TFS)if(t!==S.tf)jobs.push([S.sym,t]);
+  for(const [s,t] of jobs){if(!vis())return;const k=CK(s,t);if(CC.has(k)||pfDone[k]>Date.now()-60000)continue;pfDone[k]=Date.now();
+    try{await fullFetch(s,t)}catch(e){}await new Promise(r=>setTimeout(r,700))}},2500)}
+if(S.bars){CC.set(CK(S.bars.sym,S.bars.tf),{j:S.bars,t:Date.now()});prefetchSoon()}
+setTimeout(()=>{if(S.bars){const k=CK(S.bars.sym,S.bars.tf);if(!CC.has(k))CC.set(k,{j:S.bars,t:Date.now()});prefetchSoon()}},1500);
+</script><!--/FAST-JS-->
+</body>
+</html>
