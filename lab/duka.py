@@ -36,7 +36,7 @@ def hour_to_m1(raw, scale, hour_start):
 _SEM = threading.Semaphore(4)   # cel mult 4 cereri simultane in total (Dukascopy raspunde 503 cand e suprasolicitat)
 
 
-def fetch(url, tries=7):
+def fetch(url, tries=4):
     last = None
     for k in range(tries):
         try:
@@ -67,12 +67,16 @@ class Duka:
         for s in self.syms: threading.Thread(target=self._run, args=(s,), daemon=True).start()
 
     def get_day(self, s, d):
+        """(bare M1 ale zilei, ore esuate). O zi cu ore esuate NU se salveaza; se reia mai tarziu."""
         code, scale = MAP[s]; base = int(dt.datetime(d.year, d.month, d.day, tzinfo=dt.timezone.utc).timestamp())
         def hr(h):
-            raw = fetch(URL % (code, d.year, d.month - 1, d.day, h))
-            return hour_to_m1(raw, scale, base + h * 3600)
-        with ThreadPoolExecutor(self.workers) as ex: parts = [p for p in ex.map(hr, range(24)) if p is not None]
-        return np.concatenate(parts) if parts else np.zeros(0, DTY)
+            try:
+                raw = fetch(URL % (code, d.year, d.month - 1, d.day, h)); time.sleep(0.1)
+                return hour_to_m1(raw, scale, base + h * 3600), None
+            except Exception as e: return None, h
+        with ThreadPoolExecutor(self.workers) as ex: res = list(ex.map(hr, range(24)))
+        parts = [p for p, _ in res if p is not None]; bad = [h for _, h in res if h is not None]
+        return (np.concatenate(parts) if parts else np.zeros(0, DTY)), bad
 
     def _run(self, s):
         while True:
@@ -88,15 +92,23 @@ class Duka:
             todo = [d for d in days if not os.path.exists(self.day_path(s, d))]
             self._set(s, state="descarc", days_total=len(days), days_done=len(days) - len(todo))
             done = len(days) - len(todo)
-            for d in todo:
-                a = self.get_day(s, d)
-                p = self.day_path(s, d); tmp = p + ".tmp"
-                with open(tmp, "wb") as f: f.write(a.tobytes())
-                os.replace(tmp, p); done += 1
-                kw = {"days_done": done, "oldest": d.isoformat()}
-                if len(a): kw["sample_close"] = float(a["c"][-1]); kw["sample_day"] = d.isoformat()
-                if self.st[s]["newest"] is None: kw["newest"] = d.isoformat()
-                self._set(s, **kw)
+            for rnd in range(6):                       # runde de reluare pentru zilele cu ore esuate
+                failed = []
+                for d in todo:
+                    a, bad = self.get_day(s, d)
+                    if bad:
+                        failed.append(d); self._set(s, failed_days=len(failed), last_bad="%s ore %s" % (d.isoformat(), bad[:6])); continue
+                    p = self.day_path(s, d); tmp = p + ".tmp"
+                    with open(tmp, "wb") as f: f.write(a.tobytes())
+                    os.replace(tmp, p); done += 1
+                    kw = {"days_done": done, "oldest": d.isoformat(), "failed_days": len(failed)}
+                    if len(a): kw["sample_close"] = float(a["c"][-1]); kw["sample_day"] = d.isoformat()
+                    if self.st[s]["newest"] is None: kw["newest"] = d.isoformat()
+                    self._set(s, **kw)
+                todo = failed
+                if not todo: break
+                time.sleep(60)
+            if todo: raise RuntimeError("%d zile cu ore esuate dupa 6 runde" % len(todo))
             self._set(s, state="complet", err=None); open(os.path.join(self.sdir(s), "state.txt"), "w").write(str(int(time.time())))
             return True
         except Exception as e:
