@@ -103,7 +103,8 @@ function render(d){
   }else $('fin').innerHTML='<span class="muted">încă nicio rulare terminată</span>';
   $('jobs').innerHTML='<table><tr><th>Început</th><th>Simbol</th><th>TF</th><th>Stare</th><th class=n>Încercate</th><th class=n>t max</th><th class=n>Val</th><th class=n>Final</th></tr>'+d.jobs.map(j=>`<tr><td>${dt(j.started)}</td><td>${j.sym}</td><td>${j.tf}</td><td class="${j.state==='eroare'?'down':''}">${j.state}</td><td class=n>${fmt(j.tried)}</td><td class=n>${j.best_train_t!=null?j.best_train_t.toFixed(2):'–'}</td><td class=n>${j.stages?j.stages.val:'–'}</td><td class="n ${j.relevant?'up':''}">${j.stages?j.relevant:'–'}</td></tr>`).join('')+'</table>';
   const h=Object.entries(d.hist||{}).map(([k,v])=>`<div>${k}: <b>${fmt(v.bars)}</b> bare M1, ${iso(v.oldest)} → ${iso(v.newest)} <span class="muted">· ${v.state}</span></div>`).join('');
-  $('ctl').innerHTML=h+`<div style="margin-top:12px"><button id="tg">${a.on?'Pune pilotul pe pauză':'Pornește pilotul'}</button></div>`;
+  const dk=Object.entries(d.duka||{}).map(([k,v])=>{const pc=v.days_total?Math.round(v.days_done/v.days_total*100):0;return `<div style="margin-bottom:10px"><div>${k} · <b>Dukascopy</b> (istoric lung, cu spread real): ${fmt(v.days_done)} / ${fmt(v.days_total)} zile <span class="muted">· ${v.state}${v.oldest?' · ajuns la '+v.oldest:''}</span>${v.err?'<div class="down" style="font-size:12px">'+v.err+'</div>':''}</div><div class="bar"><i style="width:${pc}%"></i></div></div>`}).join('');
+  $('ctl').innerHTML=dk+h+`<div style="margin-top:12px"><button id="tg">${a.on?'Pune pilotul pe pauză':'Pornește pilotul'}</button></div>`;
   $('tg').onclick=()=>load('?do=auto&on='+(a.on?0:1));
 }
 load();setInterval(()=>load(),1500);

@@ -24,13 +24,14 @@ def tstat(r):
 
 class Ctx:
     """Date pregatite pentru un simbol: bare de executie + trend HTF (doar din bare HTF inchise)."""
-    def __init__(self, m1, exec_tf="5m", cost_price=0.0, slip_price=0.0, split=(0.5, 0.25, 0.25), day_shift=7200):
+    def __init__(self, m1, exec_tf="5m", cost_price=0.0, slip_price=0.0, split=(0.5, 0.25, 0.25), day_shift=3600, spread_mult=1.5):
         sec = D.TFSEC[exec_tf]; self.sec = sec
         x = D.resample(m1, sec); self.x = x
         self.t, self.o, self.h, self.l, self.c, self.v = x["t"], x["o"], x["h"], x["l"], x["c"], x["v"]
         self.a = feat.atr(self.h, self.l, self.c, 14)
         self.n = len(self.t)
-        self.cost = np.full(self.n, float(cost_price)); self.slip = float(slip_price)
+        # cost = commisionul fix (cost_price) + spread-ul MASURAT pe bara (daca sursa il are) x spread_mult (FTMO poate fi mai lat decat Dukascopy)
+        self.cost = np.full(self.n, float(cost_price)) + (spread_mult * x["sp"].astype(np.float64) if "sp" in x else 0.0); self.slip = float(slip_price)
         self.day = ((self.t + day_shift) // 86400).astype(np.int64)
         i1 = int(self.n * split[0]); i2 = int(self.n * (split[0] + split[1]))
         self.seg = {"train": (0, i1), "val": (i1, i2), "lock": (i2, self.n)}

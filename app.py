@@ -403,6 +403,7 @@ class H(BaseHTTPRequestHandler):
                     return self.send(200, HIST.report(sy) if sy in SYMS else HIST.status())
                 if u.path == "/admin/lab":
                     return self.send(200, lab_api(qs))
+                if u.path == "/admin/duka": return self.send(200, DUKA.status() if DUKA else {"duka": "oprit"})
                 if u.path == "/admin/info":
                     with SLOCK: n = {"%s/%s" % k: len(v) for k, v in STORE.items()}
                     return self.send(200, {"site_key": KEY, "stat": STAT, "bars": n, "full": ["%s/%s" % k for k in FULL]})
@@ -549,8 +550,13 @@ def autopilot():
                 except Exception: pass
             p = LABP.get("proc")
             if p and p.poll() is None: continue
-            st = HIST.status() if HIST else {}
-            if any(not (st.get(s) or {}).get("done_back") for s in ("EURUSD", "NIKKEI") if s in st): continue
+            ds = DUKA.status() if DUKA else {}; hs = HIST.status() if HIST else {}
+            def ready(sy):   # Dukascopy complet, sau (daca a esuat) istoricul MetaApi complet
+                if (ds.get(sy) or {}).get("state") == "complet": return True
+                if (ds.get(sy) or {}).get("state") in ("eroare", None) and (hs.get(sy) or {}).get("done_back"): return True
+                return False
+            symsok = [x for x in cfg.get("syms", ["EURUSD", "NIKKEI"]) if ready(x)]
+            if not symsok: continue
             last = cfg.get("last_job")
             if last:
                 try:
@@ -562,7 +568,7 @@ def autopilot():
                         json.dump(cfg, open(ctl, "w"))
                         if not cfg["on"]: continue
                 except Exception: pass
-            n = cfg.get("n", 0); sy = cfg.get("syms", ["EURUSD", "NIKKEI"])[n % len(cfg.get("syms", ["EURUSD", "NIKKEI"]))]
+            n = cfg.get("n", 0); sy = symsok[n % len(symsok)]
             tf = cfg.get("tfs", ["5m", "15m"])[(n // 2) % len(cfg.get("tfs", ["5m", "15m"]))]
             before = set(d for d in os.listdir(os.path.join(DATA, "lab")) if os.path.isdir(os.path.join(DATA, "lab", d))) if os.path.isdir(os.path.join(DATA, "lab")) else set()
             lab_api({"do": ["start"], "sym": [sy], "tf": [tf], "min": [str(cfg.get("minutes", 30))], "seed": [str(1000 + n)]})
@@ -580,13 +586,14 @@ def lab_summary(qs):
         cfg["on"] = qs["on"][0] == "1"; os.makedirs(lab, exist_ok=True); json.dump(cfg, open(os.path.join(lab, "auto.json"), "w"))
     p = LABP.get("proc")
     out["auto"] = {"on": bool(cfg.get("on")), "minutes": cfg.get("minutes", 30), "found": cfg.get("found", 0), "running": bool(p and p.poll() is None)}
+    out["duka"] = DUKA.status() if DUKA else {}
     out["hist"] = {k: {"bars": v.get("bars"), "state": v.get("state"), "oldest": v.get("oldest"), "newest": v.get("newest")} for k, v in (HIST.status().items() if HIST else []) if isinstance(v, dict)}
     jobs = sorted(d for d in os.listdir(lab) if os.path.isdir(os.path.join(lab, d))) if os.path.isdir(lab) else []
     rows = []; tot = {"tried": 0, "runs": 0, "val": 0, "robust": 0, "cost": 0, "time": 0, "ftmo": 0, "lock": 0, "relevant": 0, "secs": 0, "fin": 0}
     for j in jobs:
         try: st = json.load(open(os.path.join(lab, j, "status.json")))
         except Exception: continue
-        r = {k: st.get(k) for k in ("job", "sym", "tf", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error", "live_top", "validation", "finalists")}
+        r = {k: st.get(k) for k in ("job", "sym", "tf", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error", "live_top", "validation", "finalists", "source")}
         if st.get("state") in ("cautare", "validare", "pregatire", "incarc date") and time.time() - (st.get("updated") or 0) > 120: r["state"] = "întreruptă"
         rows.append(r)
         if st.get("state") == "gata":
@@ -611,6 +618,7 @@ def lab_summary(qs):
     return out
 
 HIST = None
+DUKA = None
 if __name__ == "__main__":
     load_disk()
     try:
@@ -618,6 +626,11 @@ if __name__ == "__main__":
         HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("HIST_YEARS", "3")))
         HIST.start()
     except Exception as e: log("hist init", repr(e))
+    try:
+        from lab.duka import Duka
+        DUKA = Duka(DATA, log, os.environ.get("DUKA_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("DUKA_YEARS", "10")))
+        DUKA.start()
+    except Exception as e: log("duka init", repr(e))
     def boot():
         for i in range(30):
             try: bases(); break

@@ -3,7 +3,9 @@
 import os, sys, json, time, glob, argparse, traceback
 import numpy as np
 
+# COSTURI: pentru sursa Dukascopy, spread-ul vine din date (x1.5); aici ramane doar comisionul + slippage (provizorii)
 # COSTURI PROVIZORII (pret pe tranzactie dus-intors, in unitati de pret) - se inlocuiesc cu valori masurate pe contul real (Faza C)
+COMM = {"EURUSD": (0.00005, 0.00003), "NIKKEI": (0.0, 2.0), "GOLD": (0.0, 0.10), "USDJPY": (0.005, 0.003), "GBPUSD": (0.00005, 0.00004), "DAX": (0.0, 0.5), "UK100": (0.0, 0.5)}
 COSTS = {"EURUSD": (0.00012, 0.00003), "NIKKEI": (8.0, 2.0), "GOLD": (0.30, 0.10), "USDJPY": (0.012, 0.003), "GBPUSD": (0.00015, 0.00004), "DAX": (2.0, 0.5), "UK100": (2.0, 0.5)}
 
 
@@ -23,7 +25,7 @@ def load_m1(data_dir, sym):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--data", required=True); ap.add_argument("--sym", default="EURUSD")
     ap.add_argument("--tf", default="5m"); ap.add_argument("--minutes", type=float, default=10); ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--job", default=None); ap.add_argument("--finish", default=None); a = ap.parse_args()
+    ap.add_argument("--job", default=None); ap.add_argument("--finish", default=None); ap.add_argument("--src", default="auto"); a = ap.parse_args()
     from . import search as S
     job = a.finish or a.job or time.strftime("%Y%m%d_%H%M%S") + "_%s_%s" % (a.sym, a.tf)
     out = os.path.join(a.data, "lab", job); os.makedirs(out, exist_ok=True)
@@ -33,9 +35,13 @@ def main():
         json.dump(st, open(os.path.join(out, "status.json.tmp"), "w")); os.replace(os.path.join(out, "status.json.tmp"), os.path.join(out, "status.json"))
     save()
     try:
-        m1 = load_m1(a.data, a.sym); c, s = COSTS.get(a.sym, (0.0, 0.0))
+        from . import duka
+        m1 = duka.load(a.data, a.sym) if (a.src != "mt" and duka.complete(a.data, a.sym)) else None
+        src = "dukascopy" if m1 is not None else "metaapi"
+        if m1 is None: m1 = load_m1(a.data, a.sym); c, s = COSTS.get(a.sym, (0.0, 0.0))
+        else: c, s = COMM.get(a.sym, (0.0, 0.0))
         iso = lambda x: time.strftime("%Y-%m-%d", time.gmtime(int(x)))
-        save(state="pregatire", bars_m1=int(len(m1["t"])), first=iso(m1["t"][0]), last=iso(m1["t"][-1]))
+        save(state="pregatire", source=src, bars_m1=int(len(m1["t"])), first=iso(m1["t"][0]), last=iso(m1["t"][-1]))
         ctx = S.Ctx(m1, a.tf, cost_price=c, slip_price=s)
         if a.finish:
             ck = json.load(open(os.path.join(out, "ckpt.json")))

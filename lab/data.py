@@ -19,6 +19,7 @@ def resample(m, sec, drop_last=True):
     out = {"t": (b[st] * sec).astype(np.int64), "o": m["o"][st], "h": np.maximum.reduceat(m["h"], st),
            "l": np.minimum.reduceat(m["l"], st), "c": m["c"][np.concatenate((cut, [len(t)])) - 1],
            "v": np.add.reduceat(m["v"].astype(np.float64), st).astype(np.float32)}
+    if "sp" in m: out["sp"] = (np.add.reduceat(m["sp"].astype(np.float64), st) / np.diff(np.concatenate((st, [len(t)])))).astype(np.float32)
     if drop_last and len(out["t"]) > 1:  # ultima bara poate fi incompleta
         out = {k: v[:-1] for k, v in out.items()}
     return out
