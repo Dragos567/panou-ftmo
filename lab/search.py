@@ -170,7 +170,7 @@ def search(ctx, budget_s, seed=1, min_n=80, pop=300, progress=None, blocks=None)
 
 
 # ---------------- palnia de validare ----------------
-def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_lock=True, log=lambda *a: None, prior_k=0, prior_lock=0):
+def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_lock=True, log=lambda *a: None, prior_k=0, prior_lock=0, cb=None):
     """cands: rezultate de la search (fitness, n, avg, genom), cele mai bune primele. Fiecare etapa elimina; se pastreaza motivul."""
     out = []; finals = []; seen_p = set()
     for c_ in cands:                                   # diversitate: cel mult o varianta pe (bloc, parametri de semnal)
@@ -181,6 +181,7 @@ def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_loc
     K = len(finals)
     zval = zcrit(alpha / max(K + prior_k, 1))   # prior_k = finalisti deja testati in rulari anterioare (corectie cumulata)
     for fit, n_tr, avg_tr, g in finals:
+        if cb: cb("finalisti", len(out), K, str(g["blk"]))
         rec = {"genome": _norm(g), "train": {"n": n_tr, "avg_r": avg_tr, "t": fit}, "stages": {}}
         out.append(rec)
         # 1) validare out-of-sample (o singura privire; prag corectat pentru K finalisti)
@@ -218,6 +219,7 @@ def validate(ctx, cands, n_trials, k_final=25, alpha=0.05, risk_pct=0.5, use_loc
         out_n = len([x for x in out if x["stages"].get("ftmo")])
     # 6) lockbox, o singura data, doar pe supravietuitori (corectie pentru numarul lor)
     surv = [x for x in out if x["stages"].get("ftmo")]
+    if cb: cb("lockbox", len(surv), len(surv), "")
     if use_lock and surv:
         zl = zcrit(alpha / (len(surv) + prior_lock))
         for x in surv:

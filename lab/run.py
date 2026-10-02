@@ -53,18 +53,19 @@ def main():
                 kw["live_top"] = top
             save(**kw)
         res, ntr = S.search(ctx, a.minutes * 60, seed=a.seed, progress=prog)
-        save(state="validare", tried=int(ntr), candidates=len(res))
+        save(state="validare", tried=int(ntr), candidates=len(res), validation={"stage": "pregatire", "i": 0, "K": 25})
         cp = os.path.join(a.data, "lab", "cum_%s_%s.json" % (a.sym, a.tf))
         try: cum = json.load(open(cp))
         except Exception: cum = {"k": 0, "lock": 0, "runs": 0}
-        val = S.validate(ctx, res, ntr, k_final=25, prior_k=cum["k"], prior_lock=cum["lock"])
+        def vcb(stage, i, K, blk): save(validation={"stage": stage, "i": int(i), "K": int(K), "blk": blk, "thr": float(S.zcrit(0.05 / max(K + cum["k"], 1)))})
+        val = S.validate(ctx, res, ntr, k_final=25, prior_k=cum["k"], prior_lock=cum["lock"], cb=vcb)
         cum["k"] += len([v for v in val]); cum["lock"] += len([v for v in val if v["stages"].get("ftmo")]); cum["runs"] += 1
         json.dump(cum, open(cp, "w"))
         good = [v for v in val if v["stages"].get("lock") and v["ftmo"]["bootstrap_pass_both"] >= 0.4]
         stage = {k: sum(1 for v in val if v["stages"].get(k)) for k in ("val", "robust", "cost", "time", "ftmo", "lock")}
         json.dump({"job": job, "sym": a.sym, "tf": a.tf, "tried": ntr, "stages": stage, "finalists": val, "relevant": len(good), "costs": {"round_trip": c, "slip": s, "provizorii": True}},
                   open(os.path.join(out, "result.json"), "w"), default=lambda o: o.item() if hasattr(o, "item") else str(o))
-        save(state="gata", relevant=len(good), stages=stage, elapsed=int(time.time() - st["started"]))
+        save(state="gata", relevant=len(good), finalists=len(val), stages=stage, elapsed=int(time.time() - st["started"]))
     except Exception as e:
         save(state="eroare", error=repr(e), tb=traceback.format_exc()[-1500:])
 

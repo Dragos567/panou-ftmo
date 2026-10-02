@@ -566,14 +566,14 @@ def lab_summary(qs):
     out["auto"] = {"on": bool(cfg.get("on")), "minutes": cfg.get("minutes", 30), "found": cfg.get("found", 0), "running": bool(p and p.poll() is None)}
     out["hist"] = {k: {"bars": v.get("bars"), "state": v.get("state"), "oldest": v.get("oldest"), "newest": v.get("newest")} for k, v in (HIST.status().items() if HIST else []) if isinstance(v, dict)}
     jobs = sorted(d for d in os.listdir(lab) if os.path.isdir(os.path.join(lab, d))) if os.path.isdir(lab) else []
-    rows = []; tot = {"tried": 0, "runs": 0, "val": 0, "robust": 0, "cost": 0, "time": 0, "ftmo": 0, "lock": 0, "relevant": 0, "secs": 0}
+    rows = []; tot = {"tried": 0, "runs": 0, "val": 0, "robust": 0, "cost": 0, "time": 0, "ftmo": 0, "lock": 0, "relevant": 0, "secs": 0, "fin": 0}
     for j in jobs:
         try: st = json.load(open(os.path.join(lab, j, "status.json")))
         except Exception: continue
-        r = {k: st.get(k) for k in ("job", "sym", "tf", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error", "live_top")}
+        r = {k: st.get(k) for k in ("job", "sym", "tf", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error", "live_top", "validation", "finalists")}
         rows.append(r)
         if st.get("state") == "gata":
-            tot["runs"] += 1; tot["tried"] += st.get("tried") or 0; tot["relevant"] += st.get("relevant") or 0; tot["secs"] += st.get("elapsed") or 0
+            tot["runs"] += 1; tot["tried"] += st.get("tried") or 0; tot["relevant"] += st.get("relevant") or 0; tot["secs"] += st.get("elapsed") or 0; tot["fin"] += st.get("finalists") or 0
             for k, v in (st.get("stages") or {}).items(): tot[k] += v
     out["totals"] = tot; out["jobs"] = rows[-25:][::-1]
     cur = [r for r in rows if r["state"] in ("incarc date", "pregatire", "cautare", "validare")]
@@ -585,7 +585,10 @@ def lab_summary(qs):
     for j in reversed(jobs):
         try:
             r = json.load(open(os.path.join(lab, j, "result.json")))
-            out["last_result"] = {"job": j, "stages": r.get("stages"), "finalists": [{"blk": f["genome"]["blk"], "train": f.get("train"), "val": f.get("val"), "fail": f.get("fail"), "ok": bool(f["stages"].get("lock")), "ftmo": f.get("ftmo")} for f in r["finalists"][:8]]}
+            fails = {}
+            for f in r["finalists"]:
+                k = (f.get("fail") or "trecut").split(":")[0]; fails[k] = fails.get(k, 0) + 1
+            out["last_result"] = {"job": j, "stages": r.get("stages"), "fails": fails, "finalists": [{"blk": f["genome"]["blk"], "train": f.get("train"), "val": f.get("val"), "fail": f.get("fail"), "ok": bool(f["stages"].get("lock")), "ftmo": f.get("ftmo")} for f in r["finalists"][:8]]}
             break
         except Exception: continue
     return out
