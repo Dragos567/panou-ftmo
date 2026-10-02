@@ -403,6 +403,15 @@ class H(BaseHTTPRequestHandler):
                     return self.send(200, HIST.report(sy) if sy in SYMS else HIST.status())
                 if u.path == "/admin/lab":
                     return self.send(200, lab_api(qs))
+                if u.path == "/admin/dukaprobe":
+                    out = []
+                    for sy, y, m, d_, h_ in [("EURUSD", 2024, 0, 15, 10), ("EURUSD", 2026, 8, 1, 10), ("EURUSD", 2020, 5, 10, 8)]:
+                        url = "https://datafeed.dukascopy.com/datafeed/%s/%04d/%02d/%02d/%02dh_ticks.bi5" % (sy, y, m, d_, h_)
+                        try:
+                            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=25) as r: b = r.read(); out.append({"url": url, "code": r.status, "bytes": len(b)})
+                        except urllib.error.HTTPError as e: out.append({"url": url, "code": e.code, "hdr": dict(e.headers.items())})
+                        except Exception as e: out.append({"url": url, "err": repr(e)})
+                    return self.send(200, out)
                 if u.path == "/admin/duka": return self.send(200, DUKA.status() if DUKA else {"duka": "oprit"})
                 if u.path == "/admin/info":
                     with SLOCK: n = {"%s/%s" % k: len(v) for k, v in STORE.items()}
