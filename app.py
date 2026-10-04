@@ -470,6 +470,10 @@ class H(BaseHTTPRequestHandler):
                 ct = {".png": "image/png", ".js": "application/javascript", ".webmanifest": "application/manifest+json"}.get(ext, "application/octet-stream")
                 with open(os.path.join(HERE, u.path.lstrip("/")), "rb") as f: return self.send(200, f.read(), ct)
             if u.path == "/api/lab": return self.send(200, lab_summary(qs))
+            if u.path == "/api/lab/journal":
+                jb = os.path.basename(qs.get("job", [""])[0])
+                try: return self.send(200, open(os.path.join(DATA, "lab", jb, "journal.csv"), "rb").read(), "text/csv; charset=utf-8", {"Content-Disposition": "attachment; filename=liq_journal_%s.csv" % jb})
+                except Exception: return self.send(404, {"error": "fara jurnal"})
             if u.path == "/api/status":
                 age = round(time.time() - STAT["last_ok"], 1) if STAT["last_ok"] else None
                 return self.send(200, {"agent_age": age, "source": "FTMO/MetaApi"})
@@ -549,6 +553,9 @@ def lab_api(qs):
         except Exception: cfg = {}
         if "on" in qs: cfg["on"] = qs["on"][0] == "1"
         if "min" in qs: cfg["minutes"] = float(qs["min"][0])
+        if "strategy" in qs: cfg["strategy"] = qs["strategy"][0]
+        if "syms" in qs: cfg["syms"] = [x for x in qs["syms"][0].split(",") if x]
+        if "tfs" in qs: cfg["tfs"] = [x for x in qs["tfs"][0].split(",") if x]
         if "ntfy" in qs: open(os.path.join(lab, "ntfy.txt"), "w").write(qs["ntfy"][0])
         json.dump(cfg, open(cp, "w")); return {"auto": cfg}
     if act == "ntfytest":
@@ -561,7 +568,8 @@ def lab_api(qs):
         if p and p.poll() is None: return {"error": "ruleaza deja o cautare"}
         if not _have_np(): return {"error": "lipsesc numpy/numba - ruleaza ?do=setup", "setup": LABP.get("setup")}
         sy = qs.get("sym", ["EURUSD"])[0]; tf = qs.get("tf", ["5m"])[0]; mi = qs.get("min", ["10"])[0]; sd = qs.get("seed", ["1"])[0]
-        LABP["proc"] = subprocess.Popen(["nice", "-n", "10", sys.executable, "-m", "lab.run", "--data", DATA, "--sym", sy, "--tf", tf, "--minutes", mi, "--seed", sd, "--k", qs.get("k", ["100"])[0]],
+        mod = "lab.run_liq" if qs.get("strategy", [""])[0] == "liq" else "lab.run"
+        LABP["proc"] = subprocess.Popen(["nice", "-n", "10", sys.executable, "-m", mod, "--data", DATA, "--sym", sy, "--tf", tf, "--minutes", mi, "--seed", sd, "--k", qs.get("k", ["100"])[0]],
                                         cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, "lab.log"), "ab"), stderr=subprocess.STDOUT)
         return {"started": True, "sym": sy, "tf": tf, "minutes": mi}
     jobs = sorted(d for d in os.listdir(lab) if os.path.isdir(os.path.join(lab, d))) if os.path.isdir(lab) else []
@@ -598,7 +606,7 @@ def autopilot():
                     stj = json.load(open(os.path.join(labd, jb, "status.json")))
                     if stj.get("state") in ("cautare", "validare", "pregatire", "incarc date") and time.time() - stj.get("updated", 0) > 90 and os.path.exists(os.path.join(labd, jb, "ckpt.json")) and not stj.get("recovered"):
                         stj["recovered"] = True; stj["state"] = "reluat"; json.dump(stj, open(os.path.join(labd, jb, "status.json"), "w"))
-                        LABP["proc"] = subprocess.Popen(["nice", "-n", "10", sys.executable, "-m", "lab.run", "--data", DATA, "--sym", stj["sym"], "--tf", stj["tf"], "--finish", jb],
+                        LABP["proc"] = subprocess.Popen(["nice", "-n", "10", sys.executable, "-m", ("lab.run_liq" if stj.get("strategy") == "liq" else "lab.run"), "--data", DATA, "--sym", stj["sym"], "--tf", stj["tf"], "--finish", jb],
                                                         cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, "lab.log"), "ab"), stderr=subprocess.STDOUT)
                         cfg["last_job"] = jb; json.dump(cfg, open(ctl, "w")); break
                 except Exception: pass
@@ -625,7 +633,7 @@ def autopilot():
             n = cfg.get("n", 0); sy = symsok[n % len(symsok)]
             tf = cfg.get("tfs", ["5m", "15m"])[(n // 2) % len(cfg.get("tfs", ["5m", "15m"]))]
             before = set(d for d in os.listdir(os.path.join(DATA, "lab")) if os.path.isdir(os.path.join(DATA, "lab", d))) if os.path.isdir(os.path.join(DATA, "lab")) else set()
-            lab_api({"do": ["start"], "sym": [sy], "tf": [tf], "min": [str(cfg.get("minutes", 30))], "seed": [str(1000 + n)], "k": [str(cfg.get("k", 100))]})
+            lab_api({"do": ["start"], "sym": [sy], "tf": [tf], "min": [str(cfg.get("minutes", 30))], "seed": [str(1000 + n)], "k": [str(cfg.get("k", 100))], "strategy": [cfg.get("strategy", "")]})
             time.sleep(5)
             new = sorted(set(d for d in os.listdir(os.path.join(DATA, "lab")) if os.path.isdir(os.path.join(DATA, "lab", d))) - before)
             cfg["n"] = n + 1; cfg["last_job"] = new[-1] if new else None; json.dump(cfg, open(ctl, "w"))
@@ -647,7 +655,7 @@ def lab_summary(qs):
     for j in jobs:
         try: st = json.load(open(os.path.join(lab, j, "status.json")))
         except Exception: continue
-        r = {k: st.get(k) for k in ("job", "sym", "tf", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error", "live_top", "validation", "finalists", "source")}
+        r = {k: st.get(k) for k in ("job", "sym", "tf", "strategy", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error", "live_top", "validation", "finalists", "source")}
         if st.get("state") in ("cautare", "validare", "pregatire", "incarc date") and time.time() - (st.get("updated") or 0) > 120: r["state"] = "întreruptă"
         rows.append(r)
         if st.get("state") == "gata":
@@ -656,7 +664,10 @@ def lab_summary(qs):
     out["totals"] = tot; out["jobs"] = rows[-25:][::-1]
     cur = [r for r in rows if r["state"] in ("incarc date", "pregatire", "cautare", "validare")]
     out["current"] = cur[-1] if cur and out["auto"]["running"] else None
-    for f in ("EURUSD_5m", "EURUSD_15m", "NIKKEI_5m", "NIKKEI_15m"):
+    out["auto"]["strategy"] = cfg.get("strategy", "")
+    try: out["baseline"] = json.load(open(os.path.join(lab, "liq_baseline.json")))
+    except Exception: pass
+    for f in ("EURUSD_5m", "EURUSD_15m", "NIKKEI_5m", "NIKKEI_15m", "DAX_liq"):
         try: out.setdefault("cum", {})[f] = json.load(open(os.path.join(lab, "cum_%s.json" % f)))
         except Exception: pass
     # cel mai bun finalist din ultima rulare terminata
@@ -666,7 +677,7 @@ def lab_summary(qs):
             fails = {}
             for f in r["finalists"]:
                 k = (f.get("fail") or "trecut").split(":")[0]; fails[k] = fails.get(k, 0) + 1
-            out["last_result"] = {"job": j, "stages": r.get("stages"), "fails": fails, "finalists": [{"blk": f["genome"]["blk"], "train": f.get("train"), "val": f.get("val"), "fail": f.get("fail"), "ok": bool(f.get("relevant")), "ftmo": f.get("ftmo"), "lock": f.get("lock")} for f in r["finalists"][:8]]}
+            out["last_result"] = {"job": j, "stages": r.get("stages"), "fails": fails, "finalists": [{"blk": f.get("desc") or f["genome"]["blk"], "train": f.get("train"), "val": f.get("val"), "fail": f.get("fail"), "ok": bool(f.get("relevant")), "ftmo": f.get("ftmo"), "lock": f.get("lock")} for f in r["finalists"][:8]]}
             break
         except Exception: continue
     return out
