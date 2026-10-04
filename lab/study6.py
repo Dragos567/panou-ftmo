@@ -5,7 +5,7 @@ import os, json, time, argparse, datetime as dt
 import numpy as np
 from .run import load_m1
 
-VER = 1
+VER = 2
 SYM = "EURUSD"
 ENTRY = (1260, 1290, 1320, 1350)       # 21:00, 21:30, 22:00, 22:30 UTC
 EXIT = (1380, 1410, 1440)              # 23:00, 23:30, 24:00 UTC
@@ -128,6 +128,23 @@ def main():
             row["pe_an"] = [{"grup": str(y), **seg_stats(gd[ok & (yr == y)])} for y in sorted(set(yr.tolist()))]
             sess.append(row); sstore[nm] = (ok, gd - cost - sw, np.where(sg > 0, mae, 0.0))
         res["sesiuni_zi"] = sess
+        # --- toate ferestrele orare (start la fiecare ora UTC, 1h/2h/3h/4h), directia aleasa pe train; candidat = acelasi semn net pe val si lock ---
+        ore = []
+        for dur in (60, 120, 180, 240):
+            for h in range(24):
+                E = h * 60; X = E + dur
+                ok2, g2, mae2, c2, s2, cr2 = trades(E, X)
+                tr2 = ok2 & (seg == 0)
+                if tr2.sum() < 200: continue
+                sg = 1.0 if g2[tr2].mean() >= 0 else -1.0
+                gd = sg * g2; sw = s2 if sg > 0 else np.zeros(D); nt = gd - c2 - sw
+                r = {"ora_utc": h, "dur_h": dur // 60, "dir": "long" if sg > 0 else "short", "n": int(ok2.sum()), "cost": round(float(np.nanmean(c2[ok2])), 3), "tot": seg_stats(gd[ok2])}
+                for k, mk in (("train", tr2), ("val", ok2 & (seg == 1)), ("lock", ok2 & (seg == 2))): r[k] = round(float(gd[mk].mean()), 3); r["net_" + k] = round(float(nt[mk].mean()), 3)
+                r["net_tot"] = round(float(nt[ok2].mean()), 3)
+                r["net2_tot"] = round(float((gd - 2 * c2 - sw)[ok2].mean()), 3)
+                r["stabil"] = bool(r["net_train"] > 0 and r["net_val"] > 0 and r["net_lock"] > 0)
+                ore.append(r)
+        res["ferestre_orare"] = ore
         # simulare FTMO pentru cea mai buna fereastra de zi (alegere pe train, net x1), excluzand noaptea
         cand = [r for r in sess if r["net1"]["train"] is not None]
         if cand:
