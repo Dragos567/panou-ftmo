@@ -5,7 +5,7 @@ import os, json, time, argparse, datetime as dt
 import numpy as np
 from .run import load_m1
 
-VER = 2
+VER = 3
 SYM = "EURUSD"
 ENTRY = (1260, 1290, 1320, 1350)       # 21:00, 21:30, 22:00, 22:30 UTC
 EXIT = (1380, 1410, 1440)              # 23:00, 23:30, 24:00 UTC
@@ -55,7 +55,7 @@ def main():
     out = os.path.join(a.data, "evt6"); os.makedirs(out, exist_ok=True)
 
     def save(d):
-        json.dump(d, open(os.path.join(out, "result.json.tmp"), "w")); os.replace(os.path.join(out, "result.json.tmp"), os.path.join(out, "result.json"))
+        open(os.path.join(out, "result.json.tmp"), "w").write(json.dumps(d).replace("NaN", "null").replace("Infinity", "null")); os.replace(os.path.join(out, "result.json.tmp"), os.path.join(out, "result.json"))
     res = {"ver": VER, "state": "ruleaza", "started": int(time.time())}
     save(res)
     try:
