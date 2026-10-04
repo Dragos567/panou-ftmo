@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Panou Trading FTMO - server independent (non-stop). Date de la FTMO prin MetaApi; fara TradingView, fara Mac.
-import os, sys, json, time, threading, hmac, secrets, gzip, base64, subprocess, collections, io, tarfile, shutil, hashlib
+import os, sys, glob, json, time, threading, hmac, secrets, gzip, base64, subprocess, collections, io, tarfile, shutil, hashlib
 import urllib.request, urllib.parse, urllib.error, datetime as dt
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
@@ -470,6 +470,9 @@ class H(BaseHTTPRequestHandler):
                 ct = {".png": "image/png", ".js": "application/javascript", ".webmanifest": "application/manifest+json"}.get(ext, "application/octet-stream")
                 with open(os.path.join(HERE, u.path.lstrip("/")), "rb") as f: return self.send(200, f.read(), ct)
             if u.path == "/api/lab": return self.send(200, lab_summary(qs))
+            if u.path == "/api/evt":
+                try: return self.send(200, json.load(open(os.path.join(DATA, "evt", "result.json"))))
+                except Exception: return self.send(200, {"state": "nu a rulat inca"})
             if u.path == "/api/lab/journal":
                 jb = os.path.basename(qs.get("job", [""])[0])
                 try: return self.send(200, open(os.path.join(DATA, "lab", jb, "journal.csv"), "rb").read(), "text/csv; charset=utf-8", {"Content-Disposition": "attachment; filename=liq_journal_%s.csv" % jb})
@@ -645,6 +648,25 @@ def autopilot():
         except FileNotFoundError: pass
         except Exception as e: log("autopilot", repr(e))
 
+def evt_once():
+    """Studiu de eveniment (lab/eventstudy.py): ruleaza o data per versiune, separat de cautare, la prioritate mica."""
+    while True:
+        time.sleep(45)
+        try:
+            if not _have_np(): continue
+            rp = os.path.join(DATA, "evt", "result.json"); ver = None; st = None
+            try: j = json.load(open(rp)); ver = j.get("ver"); st = j.get("state"); stale = time.time() - j.get("started", 0) > 1800 and st == "ruleaza"
+            except Exception: stale = False
+            import importlib.util as iu
+            try: want = int(open(os.path.join(HERE, "lab", "eventstudy.py")).read().split("VER = ", 1)[1].split()[0])
+            except Exception: continue
+            if ver == want and st in ("gata", "eroare") and not stale: continue
+            if st == "ruleaza" and not stale: continue
+            if not glob.glob(os.path.join(DATA, "hist", "DAX_1m", "p_*.bin")): continue
+            os.makedirs(os.path.join(DATA, "evt"), exist_ok=True)
+            subprocess.run(["nice", "-n", "15", sys.executable, "-m", "lab.eventstudy", "--data", DATA], cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, "evt.log"), "ab"), stderr=subprocess.STDOUT, timeout=1500)
+        except Exception as e: log("evt", repr(e))
+
 def lab_summary(qs):
     lab = os.path.join(DATA, "lab"); out = {"now": int(time.time())}
     try: cfg = json.load(open(os.path.join(lab, "auto.json")))
@@ -721,6 +743,7 @@ if __name__ == "__main__":
     threading.Thread(target=boot, daemon=True).start()
     start_quotes()
     threading.Thread(target=autopilot, daemon=True).start()
+    threading.Thread(target=evt_once, daemon=True).start()
     if os.path.exists(CFGP): threading.Thread(target=updater, daemon=True).start()
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), H); srv.daemon_threads = True
     print("Panou FTMO pornit pe", PORT, flush=True)
