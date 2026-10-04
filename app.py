@@ -446,6 +446,17 @@ class H(BaseHTTPRequestHandler):
                         with ThreadPoolExecutor(conc) as ex: res = list(ex.map(one, range(n)))
                         return self.send(200, {"conc": conc, "delay": delay, "total_s": round(time.time() - t0, 1), "res": res})
                     finally: _dk.PAUSE.clear()
+                if u.path == "/admin/spec":
+                    sy = qs.get("sym", ["DAX"])[0]; cb, _ = bases()
+                    try: return self.send(200, http("%s/users/current/accounts/%s/symbols/%s/specification" % (cb, AID, urllib.parse.quote(SYMS[sy], safe="")), tries=2, timeout=20))
+                    except Exception as e: return self.send(200, {"err": repr(e)[:300]})
+                if u.path == "/admin/tzdiag":
+                    sy = qs.get("sym", ["DAX"])[0]
+                    try:
+                        if _pylibs() not in sys.path: sys.path.insert(0, _pylibs())
+                        from lab import tzdiag
+                        return self.send(200, tzdiag.report(DATA, sy))
+                    except Exception as e: return self.send(200, {"err": repr(e)[:400]})
                 if u.path == "/admin/duka": return self.send(200, DUKA.status() if DUKA else {"duka": "oprit"})
                 if u.path == "/admin/info":
                     with SLOCK: n = {"%s/%s" % k: len(v) for k, v in STORE.items()}
@@ -666,7 +677,7 @@ if __name__ == "__main__":
     load_disk()
     try:
         from lab.hist import Hist
-        HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI").split(","), float(os.environ.get("HIST_YEARS", "10")))
+        HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI,DAX").split(","), float(os.environ.get("HIST_YEARS", "10")))
         HIST.start()
     except Exception as e: log("hist init", repr(e))
     def start_duka():
