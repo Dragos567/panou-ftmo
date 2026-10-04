@@ -563,6 +563,10 @@ def lab_api(qs):
     if act == "setup":
         if LABP.get("setup") != "instalez": _setup_libs()
         return {"setup": LABP.get("setup")}
+    if act == "stop":
+        p = LABP.get("proc")
+        if p and p.poll() is None: p.terminate(); return {"stopped": True}
+        return {"stopped": False}
     if act == "start":
         p = LABP.get("proc")
         if p and p.poll() is None: return {"error": "ruleaza deja o cautare"}
