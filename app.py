@@ -659,6 +659,7 @@ def lab_summary(qs):
     for j in jobs:
         try: st = json.load(open(os.path.join(lab, j, "status.json")))
         except Exception: continue
+        if st.get("strategy") != "liq": continue      # pagina arata doar strategia LIQ pe DAX; rularile vechi (EURUSD/Nikkei) nu se mai numara
         r = {k: st.get(k) for k in ("job", "sym", "tf", "strategy", "state", "started", "updated", "tried", "best_train_t", "minutes", "stages", "relevant", "elapsed", "error", "live_top", "validation", "finalists", "source")}
         if st.get("state") in ("cautare", "validare", "pregatire", "incarc date") and time.time() - (st.get("updated") or 0) > 120: r["state"] = "întreruptă"
         rows.append(r)
@@ -671,13 +672,14 @@ def lab_summary(qs):
     out["auto"]["strategy"] = cfg.get("strategy", "")
     try: out["baseline"] = json.load(open(os.path.join(lab, "liq_baseline.json")))
     except Exception: pass
-    for f in ("EURUSD_5m", "EURUSD_15m", "NIKKEI_5m", "NIKKEI_15m", "DAX_liq"):
+    for f in ("DAX_liq",):
         try: out.setdefault("cum", {})[f] = json.load(open(os.path.join(lab, "cum_%s.json" % f)))
         except Exception: pass
     # cel mai bun finalist din ultima rulare terminata
     for j in reversed(jobs):
         try:
             r = json.load(open(os.path.join(lab, j, "result.json")))
+            if r.get("strategy") != "liq": continue
             fails = {}
             for f in r["finalists"]:
                 k = (f.get("fail") or "trecut").split(":")[0]; fails[k] = fails.get(k, 0) + 1
