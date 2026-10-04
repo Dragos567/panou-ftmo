@@ -7,7 +7,7 @@ import numpy as np
 from . import liqx as X
 from .run import load_m1
 
-VER = 1
+VER = 2
 SYM = "DAX"
 HZ = [5, 15, 30, 60, 120]
 
@@ -21,6 +21,36 @@ def ctstat(x, day):
     s = np.bincount(inv, weights=x - m)
     var = float((s ** 2).sum()) * G / (G - 1) / (n ** 2)
     return m / np.sqrt(var) if var > 0 else None
+
+
+# ---- sesiuni (ora RO): Asia 02:00-09:30, Londra 09:30-16:30, New York 16:30-23:00 ----
+SESS = {"Asia": (120, 570), "Londra": (570, 990), "NY": (990, 1380)}
+SWEEP_SESS = [("Asia", 120, 570), ("Londra", 570, 990), ("NY", 990, 1380)]
+
+
+def session_events(t, h, l, lmin, lday, tick):
+    """High/low-ul fiecarei sesiuni devine nivel la sfarsitul sesiunii si ramane valabil 24 h; evenimentul = prima bara care il depaseste cu >= 1 tick.
+    Intoarce (bara, directie, sursa) - fara privire in viitor: nivelul e cunoscut abia dupa sfarsitul sesiunii."""
+    n = len(t); eb, ed, es = [], [], []
+    for name, (a, b) in SESS.items():
+        inn = (lmin >= a) & (lmin < b)
+        idx = np.flatnonzero(inn)
+        if len(idx) == 0: continue
+        key = lday[idx]
+        cut = np.flatnonzero(np.diff(key)) + 1; st = np.concatenate(([0], cut)); en = np.concatenate((cut, [len(idx)])) - 1
+        cnt = en - st + 1
+        hi = np.maximum.reduceat(h[idx], st); lo = np.minimum.reduceat(l[idx], st)
+        for g in range(len(st)):
+            if cnt[g] < 30: continue
+            e = idx[en[g]]
+            k = int(np.searchsorted(t, t[e] + 86400))
+            if e + 1 >= min(k, n): continue
+            sl = slice(e + 1, min(k, n))
+            ph = np.flatnonzero(h[sl] >= hi[g] + tick - tick * 1e-3)
+            pl = np.flatnonzero(l[sl] <= lo[g] - tick + tick * 1e-3)
+            if len(ph): eb.append(e + 1 + int(ph[0])); ed.append(1); es.append(name)
+            if len(pl): eb.append(e + 1 + int(pl[0])); ed.append(-1); es.append(name)
+    return np.array(eb, np.int64), np.array(ed, np.int64), np.array(es)
 
 
 def main():
@@ -91,6 +121,38 @@ def main():
                     tt = ctstat(x, evday[mk]) if len(x) else None
                     row[gn] = {"n": int(mk.sum()), "mean": round(float(x.mean()), 3) if len(x) else None, "t": round(tt, 2) if tt is not None else None}
                 res["hours"].append(row)
+        # ---------- sesiuni: Asia / Londra / New York (nivelurile de sesiune, sweep in orice sesiune ulterioara) ----------
+        hrs = (lmin // 60); cov = np.bincount(hrs.astype(np.int64), minlength=24)
+        res["acoperire_ore_RO"] = {str(i): int(cov[i]) for i in range(24)}
+        sb, sd_, ss = session_events(t, ctx.h, ctx.l, lmin, lday, ctx.tick)
+        res["sess_events"] = int(len(sb)); res["sess"] = []; res["sess_cand"] = []
+        if len(sb):
+            sbm = lmin[sb]; sday = lday[sb]
+            sseg = np.where(t[sb] < c0, 0, np.where(t[sb] < c1, 1, 2))
+            sw_in = {nm: (sbm >= a) & (sbm < b) for nm, a, b in SWEEP_SESS}; sw_in["toate"] = np.ones(len(sb), bool)
+            sb_b = lmin[sb] // 15
+            allm = (lmin >= 120) & (lmin < 1380)
+            for H in (15, 30, 60):
+                F, ok = fwd_all(H)
+                mu = np.zeros(96)
+                for b in range(96):
+                    mk = allm & (t < c0) & ok & (allb == b)
+                    if mk.sum() > 200: mu[b] = float(F[mk].mean())
+                exs = -sd_ * (F[sb] - mu[sb_b]); oks = ok[sb]
+                for lv in ("Asia", "Londra", "NY"):
+                    for sw, swm in sw_in.items():
+                        for dn, dmk in (("ambele", np.ones(len(sb), bool)), ("high_sweep", sd_ == 1), ("low_sweep", sd_ == -1)):
+                            row = {"H": H, "nivel": lv, "sweep_in": sw, "dir": dn}
+                            for gn, gk in (("train", sseg == 0), ("val", sseg == 1), ("lock", sseg == 2), ("tot", np.ones(len(sb), bool))):
+                                mk = (ss == lv) & swm & dmk & gk & oks; x = exs[mk]
+                                tt = ctstat(x, sday[mk]) if len(x) else None
+                                row[gn] = {"n": int(mk.sum()), "mean": round(float(x.mean()), 3) if len(x) else None, "t": round(tt, 2) if tt is not None else None}
+                            res["sess"].append(row)
+                            tr, va, lk = row["train"], row["val"], row["lock"]
+                            if sw != "toate" and dn != "ambele" and tr["t"] is not None and va["t"] is not None and tr["n"] >= 80 and va["n"] >= 40:
+                                if np.sign(tr["mean"]) == np.sign(va["mean"]) and abs(tr["t"]) >= 2.0 and abs(va["t"]) >= 1.3:
+                                    res["sess_cand"].append({"H": H, "nivel": lv, "sweep_in": sw, "dir": dn, "tip": "reversare" if tr["mean"] > 0 else "continuare", "train": tr, "val": va, "lock": lk})
+        res["sess_tests"] = len(res.get("sess", []))
         res["tests"] = len(res["rows"]); res["finished"] = int(time.time())
         res["nota"] = ("Pozitiv = reversare dupa sweep (in puncte DAX, dupa scaderea derivei orei). Costul unei tranzactii e cost_pts. "
                        "Sunt %d celule testate: la |t|>=2 se asteapta cateva false pozitive doar din intamplare; conteaza celulele unde train si validare au acelasi semn." % res["tests"])
