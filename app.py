@@ -470,8 +470,8 @@ class H(BaseHTTPRequestHandler):
                 ct = {".png": "image/png", ".js": "application/javascript", ".webmanifest": "application/manifest+json"}.get(ext, "application/octet-stream")
                 with open(os.path.join(HERE, u.path.lstrip("/")), "rb") as f: return self.send(200, f.read(), ct)
             if u.path == "/api/lab": return self.send(200, lab_summary(qs))
-            if u.path == "/api/evt":
-                try: return self.send(200, json.load(open(os.path.join(DATA, "evt", "result.json"))))
+            if u.path in ("/api/evt", "/api/evt2"):
+                try: return self.send(200, json.load(open(os.path.join(DATA, u.path.rsplit("/", 1)[1], "result.json"))))
                 except Exception: return self.send(200, {"state": "nu a rulat inca"})
             if u.path == "/api/lab/journal":
                 jb = os.path.basename(qs.get("job", [""])[0])
@@ -649,22 +649,23 @@ def autopilot():
         except Exception as e: log("autopilot", repr(e))
 
 def evt_once():
-    """Studiu de eveniment (lab/eventstudy.py): ruleaza o data per versiune, separat de cautare, la prioritate mica."""
+    """Studii (lab/eventstudy.py, lab/study2.py): ruleaza o data per versiune, separat de cautare, la prioritate mica."""
+    jobs = [("evt", "lab.eventstudy", "eventstudy.py"), ("evt2", "lab.study2", "study2.py")]
     while True:
         time.sleep(45)
         try:
             if not _have_np(): continue
-            rp = os.path.join(DATA, "evt", "result.json"); ver = None; st = None
-            try: j = json.load(open(rp)); ver = j.get("ver"); st = j.get("state"); stale = time.time() - j.get("started", 0) > 1800 and st == "ruleaza"
-            except Exception: stale = False
-            import importlib.util as iu
-            try: want = int(open(os.path.join(HERE, "lab", "eventstudy.py")).read().split("VER = ", 1)[1].split()[0])
-            except Exception: continue
-            if ver == want and st in ("gata", "eroare") and not stale: continue
-            if st == "ruleaza" and not stale: continue
-            if not glob.glob(os.path.join(DATA, "hist", "DAX_1m", "p_*.bin")): continue
-            os.makedirs(os.path.join(DATA, "evt"), exist_ok=True)
-            subprocess.run(["nice", "-n", "15", sys.executable, "-m", "lab.eventstudy", "--data", DATA], cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, "evt.log"), "ab"), stderr=subprocess.STDOUT, timeout=1500)
+            for dn, mod, fn in jobs:
+                rp = os.path.join(DATA, "evt" if dn == "evt" else dn, "result.json"); ver = None; st = None; stale = False
+                try: j = json.load(open(rp)); ver = j.get("ver"); st = j.get("state"); stale = time.time() - j.get("started", 0) > 3600 and st == "ruleaza"
+                except Exception: pass
+                try: want = int(open(os.path.join(HERE, "lab", fn)).read().split("VER = ", 1)[1].split()[0])
+                except Exception: continue
+                if ver == want and st in ("gata", "eroare") and not stale: continue
+                if st == "ruleaza" and not stale: continue
+                if not glob.glob(os.path.join(DATA, "hist", "DAX_1m", "p_*.bin")): continue
+                os.makedirs(os.path.dirname(rp), exist_ok=True)
+                subprocess.run(["nice", "-n", "15", sys.executable, "-m", mod, "--data", DATA], cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, dn + ".log"), "ab"), stderr=subprocess.STDOUT, timeout=3000)
         except Exception as e: log("evt", repr(e))
 
 def lab_summary(qs):
