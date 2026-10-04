@@ -37,17 +37,21 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--data", required=True); ap.add_argument("--minutes", type=float, default=10); ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--job", default=None); ap.add_argument("--finish", default=None); ap.add_argument("--k", type=int, default=100)
     ap.add_argument("--sym", default=SYM); ap.add_argument("--tf", default="1m"); a = ap.parse_args()
+    TF = a.tf if a.tf in ("1m", "5m", "15m") else "1m"; TFM = {"1m": 1, "5m": 5, "15m": 15}[TF]
     from . import liqx as X
     from .run import load_m1
     job = a.finish or a.job or time.strftime("%Y%m%d_%H%M%S") + "_DAX_liq"
     out = os.path.join(a.data, "lab", job); os.makedirs(out, exist_ok=True)
-    st = json.load(open(os.path.join(out, "status.json"))) if a.finish else {"job": job, "sym": SYM, "tf": "1m", "strategy": "liq", "state": "incarc date", "started": int(time.time()), "costs_provizorii": True, "minutes": a.minutes, "source": "metaapi (FTMO)"}
+    st = json.load(open(os.path.join(out, "status.json"))) if a.finish else {"job": job, "sym": SYM, "tf": TF, "strategy": "liq", "state": "incarc date", "started": int(time.time()), "costs_provizorii": True, "minutes": a.minutes, "source": "metaapi (FTMO)"}
     def save(**kw):
         st.update(kw); st["updated"] = int(time.time())
         json.dump(st, open(os.path.join(out, "status.json.tmp"), "w")); os.replace(os.path.join(out, "status.json.tmp"), os.path.join(out, "status.json"))
     save()
     try:
         m1 = load_m1(a.data, SYM)
+        if TFM > 1:
+            from .data import resample
+            m1 = resample(m1, TFM * 60)   # bare de TFM minute; nivelurile, MSS, FVG si intrarea se evalueaza pe aceste bare
         iso = lambda x: time.strftime("%Y-%m-%d", time.gmtime(int(x)))
         spread = None; prov = True; ns = 0
         try:
@@ -115,7 +119,7 @@ def main():
             g0 = {k: v for k, v in pick["genome"].items() if k != "blk"}
             try: journal(ctx, g0, os.path.join(out, "journal.csv"))
             except Exception as e: save(journal_error=repr(e))
-        json.dump({"job": job, "sym": SYM, "tf": "1m", "strategy": "liq", "tried": ntr, "stages": stage, "finalists": val, "relevant": len(good), "costs": {"provizorii": prov}},
+        json.dump({"job": job, "sym": SYM, "tf": TF, "strategy": "liq", "tried": ntr, "stages": stage, "finalists": val, "relevant": len(good), "costs": {"provizorii": prov}},
                   open(os.path.join(out, "result.json"), "w"), default=lambda o: o.item() if hasattr(o, "item") else str(o))
         save(state="gata", relevant=len(good), finalists=len(val), stages=stage, elapsed=int(time.time() - st["started"]))
     except Exception as e:

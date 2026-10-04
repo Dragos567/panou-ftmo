@@ -636,6 +636,7 @@ def autopilot():
                 except Exception: pass
             n = cfg.get("n", 0); sy = symsok[n % len(symsok)]
             tf = cfg.get("tfs", ["5m", "15m"])[(n // 2) % len(cfg.get("tfs", ["5m", "15m"]))]
+            if cfg.get("strategy") == "liq": tf = cfg.get("liq_tf", "5m")   # LIQ: un singur timeframe (implicit M5)
             before = set(d for d in os.listdir(os.path.join(DATA, "lab")) if os.path.isdir(os.path.join(DATA, "lab", d))) if os.path.isdir(os.path.join(DATA, "lab")) else set()
             lab_api({"do": ["start"], "sym": [sy], "tf": [tf], "min": [str(cfg.get("minutes", 30))], "seed": [str(1000 + n)], "k": [str(cfg.get("k", 100))], "strategy": [cfg.get("strategy", "")]})
             time.sleep(5)

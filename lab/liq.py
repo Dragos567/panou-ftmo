@@ -26,7 +26,7 @@ def ro_offset(t):
 
 # ---------------- nivelurile de lichiditate si sweep-urile lor (nu depind de variantele strategiei) ----------------
 @njit(cache=True)
-def build_levels(t, h, l, lmin, lday, tick, win0, win1, cap_rows):
+def build_levels(t, h, l, lmin, lday, tick, win0, win1, cap_rows, mstep):
     n = len(t); eps = tick * 1e-3; CAP = 20000
     hp = np.empty(CAP); hs = np.zeros(CAP, np.int64); ht = np.zeros(CAP, np.int64); nh = 0
     lp = np.empty(CAP); ls = np.zeros(CAP, np.int64); lt = np.zeros(CAP, np.int64); nl = 0
@@ -42,19 +42,19 @@ def build_levels(t, h, l, lmin, lday, tick, win0, win1, cap_rows):
         if d != cur_day:
             # inchidere zi: adauga nivelurile Daily (disponibile de acum)
             for side in range(2):
-                if side == 0 and dc >= 30:
+                if side == 0 and dc * mstep >= 30:
                     p = dh; merged = False
                     for i in range(nh):
                         if abs(hp[i] - p) < tick * 0.5: hs[i] |= SRC_D; merged = True; break
                     if not merged and nh < CAP: hp[nh] = p; hs[nh] = SRC_D; ht[nh] = t[j]; nh += 1
-                if side == 1 and dc >= 30:
+                if side == 1 and dc * mstep >= 30:
                     p = dl; merged = False
                     for i in range(nl):
                         if abs(lp[i] - p) < tick * 0.5: ls[i] |= SRC_D; merged = True; break
                     if not merged and nl < CAP: lp[nl] = p; ls[nl] = SRC_D; lt[nl] = t[j]; nl += 1
             wk = (d + 3) // 7
             if wk != cur_wk:
-                if wc >= 100:
+                if wc * mstep >= 100:
                     p = wh; merged = False
                     for i in range(nh):
                         if abs(hp[i] - p) < tick * 0.5: hs[i] |= SRC_W; merged = True; break
@@ -84,7 +84,7 @@ def build_levels(t, h, l, lmin, lday, tick, win0, win1, cap_rows):
         # Asia 02:00-09:30 (120..569): nivelurile apar la prima bara >= 09:30
         if lmin[j] >= 570 and not asia_done:
             asia_done = True
-            if ac >= 60:
+            if ac * mstep >= 60:
                 p = ah; merged = False
                 for i in range(nh):
                     if abs(hp[i] - p) < tick * 0.5: hs[i] |= SRC_A; merged = True; break

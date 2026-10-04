@@ -57,13 +57,14 @@ class LCtx:
         self.tick = tick
         t = np.ascontiguousarray(m1["t"], np.int64); self.t = t
         self.o, self.h, self.l, self.c = [np.ascontiguousarray(m1[k], np.float64) for k in ("o", "h", "l", "c")]
+        self.mstep = max(1, int(round(float(np.median(np.diff(t[:200000]))) / 60.0))) if len(t) > 2 else 1   # minute pe bara (M1=1, M5=5)
         off = Q.ro_offset(t); loc = t + off
         self.lday = (loc // 86400).astype(np.int64); self.lmin = ((loc % 86400) // 60).astype(np.int64)
         hr = ((t // 3600) % 24).astype(int)
         if spread_by_hour is not None: cost = spread_mult * np.asarray(spread_by_hour, np.float64)[hr] + comm + slip
         else: cost = np.full(len(t), cost_pts + comm + slip)
         self.cost = cost
-        self.rows = Q.build_levels(t, self.h, self.l, self.lmin, self.lday, tick, 600, 1080, 3_000_000)
+        self.rows = Q.build_levels(t, self.h, self.l, self.lmin, self.lday, tick, 600, 1080, 3_000_000, self.mstep)
         self.sw = {}
         n = len(t); i1 = int(n * split[0]); i2 = int(n * (split[0] + split[1]))
         self.cut = (int(t[i1]), int(t[i2]))
