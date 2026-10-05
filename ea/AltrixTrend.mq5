@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| AltrixTrend.mq5  v2.0                                            |
+//| AltrixTrend.mq5  v2.1                                            |
 //| Trend following (ansamblu L120/L250 pe bare zilnice), vol        |
 //| targeting, portofoliu multi-simbol, rebalansare saptamanala.     |
 //| Garduri FTMO: hard-stop zilnic, oprire totala, plafon expunere.  |
@@ -7,7 +7,7 @@
 //| simbolurile din lista. Merge identic live si in Strategy Tester. |
 //+------------------------------------------------------------------+
 #property copyright "Altrix"
-#property version   "2.00"
+#property version   "2.10"
 #property strict
 #include <Trade/Trade.mqh>
 
@@ -35,7 +35,7 @@ int      g_maxLb = 0;
 double   g_initBal = 0, g_dayRef = 0;
 long     g_dayNo = -1;
 bool     g_dayLocked = false;
-string   g_gvKill, g_gvInit, g_gvWk;
+string   g_gvKill, g_gvInit, g_gvWk, g_gvDayRef, g_gvDayNo;
 string   g_info = "";
 int      g_fail = 0;
 int      g_tries = 0;
@@ -86,17 +86,20 @@ int OnInit()
 
    long acc = AccountInfoInteger(ACCOUNT_LOGIN);
    g_gvKill = "ALTRIX_KILL_" + (string)acc; g_gvInit = "ALTRIX_INIT_" + (string)acc; g_gvWk = "ALTRIX_WK_" + (string)acc;
-   if(g_tester) { GlobalVariableDel(g_gvKill); GlobalVariableDel(g_gvInit); GlobalVariableDel(g_gvWk); }
+   g_gvDayRef = "ALTRIX_DREF_" + (string)acc; g_gvDayNo = "ALTRIX_DNO_" + (string)acc;
+   if(g_tester) { GlobalVariableDel(g_gvKill); GlobalVariableDel(g_gvInit); GlobalVariableDel(g_gvWk); GlobalVariableDel(g_gvDayRef); GlobalVariableDel(g_gvDayNo); }
 
    if(InpInitialBalance > 0) g_initBal = InpInitialBalance;
    else if(GlobalVariableCheck(g_gvInit)) g_initBal = GlobalVariableGet(g_gvInit);
    else g_initBal = AccountInfoDouble(ACCOUNT_BALANCE);
    GlobalVariableSet(g_gvInit, g_initBal);
+   if(GlobalVariableCheck(g_gvDayNo))  g_dayNo  = (long)GlobalVariableGet(g_gvDayNo);     // referinta zilei supravietuieste unui restart al terminalului
+   if(GlobalVariableCheck(g_gvDayRef)) g_dayRef = GlobalVariableGet(g_gvDayRef);
 
    trade.SetExpertMagicNumber((ulong)InpMagic);
    trade.SetDeviationInPoints(50);
    if(!g_tester) EventSetTimer(20);          // live: ruleaza si fara tick-uri; in tester totul vine din OnTick
-   Notify(StringFormat("pornit v2.0: %d simboluri (%s), balanta initiala %.2f, mod %s", g_nS, g_tester ? "TESTER" : "LIVE", g_initBal, InpTradeEnabled ? "TRANZACTIONARE" : "USCAT"));
+   Notify(StringFormat("pornit v2.1: %d simboluri (%s), balanta initiala %.2f, mod %s", g_nS, g_tester ? "TESTER" : "LIVE", g_initBal, InpTradeEnabled ? "TRANZACTIONARE" : "USCAT"));
    return INIT_SUCCEEDED;
 }
 
@@ -129,13 +132,23 @@ int CountPositions()
    return c;
 }
 
+bool ClosePositionWithRetry(const ulong ticket, const int retries = 5)
+{
+   for(int r = 0; r < retries; r++)
+   {
+      if(trade.PositionClose(ticket)) return true;
+      Sleep(150);
+   }
+   return false;
+}
+
 void CloseSymbol(const string s)
 {
    for(int i = PositionsTotal() - 1; i >= 0; i--)
    {
       ulong t = PositionGetTicket(i); if(t == 0) continue;
       if(PositionGetString(POSITION_SYMBOL) != s || PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
-      if(!trade.PositionClose(t)) { g_fail++; Print("[AltrixTrend] Inchidere esuata ", s, " rc=", trade.ResultRetcode()); }
+      if(!ClosePositionWithRetry(t)) { g_fail++; Print("[AltrixTrend] Inchidere esuata ", s, " rc=", trade.ResultRetcode()); }
    }
 }
 
@@ -145,7 +158,7 @@ void CloseAll()
    {
       ulong t = PositionGetTicket(i); if(t == 0) continue;
       if(PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
-      if(!trade.PositionClose(t)) Print("[AltrixTrend] Inchidere esuata ticket ", t, " rc=", trade.ResultRetcode());
+      if(!ClosePositionWithRetry(t)) Print("[AltrixTrend] Inchidere esuata ticket ", t, " rc=", trade.ResultRetcode());
    }
 }
 
@@ -205,7 +218,7 @@ void ReduceVolume(const string s, const bool wasLong, double vol)
       double cv = MathMin(vol, pv);
       cv = MathFloor(cv / step + 1e-9) * step;
       if(cv <= 0) continue;
-      bool ok = (cv >= pv - 1e-9) ? trade.PositionClose(t) : trade.PositionClosePartial(t, cv);
+      bool ok = (cv >= pv - 1e-9) ? ClosePositionWithRetry(t) : trade.PositionClosePartial(t, cv);
       if(ok) vol -= cv; else { g_fail++; Print("[AltrixTrend] Reducere esuata ", s, " rc=", trade.ResultRetcode()); }
    }
 }
@@ -319,7 +332,7 @@ bool Guards()
 {
    double bal = AccountInfoDouble(ACCOUNT_BALANCE), eq = AccountInfoDouble(ACCOUNT_EQUITY);
    long dayNo = (long)(TimeCurrent() / 86400);          // ziua serverului (la FTMO = ora CE(S)T, ca in regulile lor)
-   if(dayNo != g_dayNo) { g_dayNo = dayNo; g_dayRef = MathMax(bal, eq); g_dayLocked = false; }
+   if(dayNo != g_dayNo) { g_dayNo = dayNo; g_dayRef = MathMax(bal, eq); g_dayLocked = false; GlobalVariableSet(g_gvDayNo, (double)g_dayNo); GlobalVariableSet(g_gvDayRef, g_dayRef); }
    if(GlobalVariableCheck(g_gvKill) && GlobalVariableGet(g_gvKill) > 0) { g_info = "OPRIT (kill activ)"; return false; }
    if(eq <= g_initBal * (1.0 - InpMaxDDPct / 100.0))
    {
@@ -371,7 +384,7 @@ void Step()
       }
    }
    if(!g_tester)
-      Comment(StringFormat("AltrixTrend v2.0\nStare: %s\nEquity: %.2f | Balanta init.: %.2f\nRef. zi: %.2f | Zi: %+.2f%%\nDD total: %.2f%% (limita %.1f%%)\nPozitii: %d",
+      Comment(StringFormat("AltrixTrend v2.1\nStare: %s\nEquity: %.2f | Balanta init.: %.2f\nRef. zi: %.2f | Zi: %+.2f%%\nDD total: %.2f%% (limita %.1f%%)\nPozitii: %d",
               g_info, AccountInfoDouble(ACCOUNT_EQUITY), g_initBal, g_dayRef, g_dayRef > 0 ? (AccountInfoDouble(ACCOUNT_EQUITY) / g_dayRef - 1.0) * 100.0 : 0.0,
               g_initBal > 0 ? (1.0 - AccountInfoDouble(ACCOUNT_EQUITY) / g_initBal) * 100.0 : 0.0, InpMaxDDPct, CountPositions()));
 }

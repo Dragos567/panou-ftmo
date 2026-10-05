@@ -1,6 +1,6 @@
-# AltrixTrend v2.0 (MT5) – trend lent cu vol targeting, garduri FTMO
+# AltrixTrend v2.1 (MT5) – trend lent cu vol targeting, garduri FTMO
 
-v2.0: merge pe orice timeframe (recomandat H1), logica din OnTick (live: si din timer), plafon expunere totala `InpMaxTotalLev` (cont 50k, levier 1:30), lista separata `InpTesterSymbols` pentru Strategy Tester.
+v2.1: merge pe orice timeframe (recomandat H1), logica din OnTick (live: si din timer), plafon expunere totala `InpMaxTotalLev` (cont 50k, levier 1:30), lista separata `InpTesterSymbols` pentru Strategy Tester.
 
 ## Ce face
 - Portofoliu pe 10 simboluri (EURUSD, GBPUSD, USDJPY, XAUUSD, US100, US500, US30, GER40, UK100, JP225 – numele din MT5 FTMO, editabile).
@@ -27,7 +27,7 @@ v2.0: merge pe orice timeframe (recomandat H1), logica din OnTick (live: si din 
 ## Rulare pe DEMO (recomandat in loc de Strategy Tester pe Mac/Wine)
 1. Deschide graficul EURUSD H1 pe contul demo FTMO. Trage AltrixTrend pe grafic.
 2. Tab **Inputs**: `InpTradeEnabled = false` (mod uscat), `InpInitialBalance = 50000`. Tab **Common**: bifeaza **Allow Algo Trading**.
-3. Jos, tab **Experts**: trebuie sa apara `[AltrixTrend] pornit v2.0: N simboluri (LIVE)...`. In coltul graficului apare starea (equity, DD, pozitii).
+3. Jos, tab **Experts**: trebuie sa apara `[AltrixTrend] pornit v2.1: N simboluri (LIVE)...`. In coltul graficului apare starea (equity, DD, pozitii).
 4. Rebalansarea se face la inceputul saptamanii (luni, dupa 2 ore). Linia `rebalansare (...)` arata volumele tinta pe fiecare simbol. Cu `InpTradeEnabled = false` nu se deschide nimic: doar compari cu ce te asteptai.
 5. Dupa 1-2 saptamani: `InpTradeEnabled = true` pe DEMO, urmaresti ordinele reale, spread-ul si swap-ul.
 
