@@ -536,7 +536,7 @@ function renderBias(){
     const top=src[k].sort((x,y)=>y.w-x.w).slice(0,3).map(s=>`${esc(s.t)} (${s.su>0?'peste':'sub'})`).join(' · ');
     const pos=Math.max(4,Math.min(96,50+v/8*46));
     return `<div class="brow"><div class="nm">${INSTR[k].label}<span class="sh">${INSTR[k].sh}</span></div><div class="mid"><div class="bm"><i class="${cl}" style="left:${pos}%"></i></div><small>${top||'niciun eveniment cu efect clar'}</small></div><span class="arrow ${cl}">${lab}</span></div>`}).join('')+
-    `<p class="note">Bazat pe ${done.length} evenimente publicate în ultimele 24 h, cu surpriza față de prognoză. Estimare euristică, nu recomandare.</p>`}
+    `<p class="note">Bazat pe ${done.length} evenimente publicate în ultimele 24 h, cu surpriza față de prognoză: ${done.map(e=>esc(e.title)+' '+e.actual+' vs '+e.forecast+(surprise(e)?'':' (în linie)')).join(' · ')}. Sub 2% diferență față de prognoză = fără efect, deci „neutru”. Estimare euristică, nu recomandare.</p>`}
 
 /* ---------- ce urmează ---------- */
 function renderNext(){
