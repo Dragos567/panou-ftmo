@@ -12,7 +12,7 @@ from .study12 import daily_series, cost_frac, OLD, NEW, CLS
 from .study11 import seg_stats, ftmo_block
 from .study14 import SW, CRYPTO_DAY
 
-VER = 2
+VER = 3
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "text/csv,*/*"}
 COT_MAP = {  # sim: (pattern-uri, semn)  semn=-1 cand piata COT e inversa fata de simbolul CFD (ex. JPY vs USDJPY)
     "EURUSD": (["EURO FX"], 1), "GBPUSD": (["BRITISH POUND"], 1), "USDJPY": (["JAPANESE YEN"], -1), "AUDUSD": (["AUSTRALIAN DOLLAR"], 1), "USDCAD": (["CANADIAN DOLLAR"], -1),
@@ -24,7 +24,7 @@ RATE_IDS = {"USD": "USA", "EUR": "EZ", "GBP": "GBR", "JPY": "JPN", "AUD": "AUS",
 PAIRS = {"EURUSD": ("EUR", "USD"), "GBPUSD": ("GBP", "USD"), "USDJPY": ("USD", "JPY"), "AUDUSD": ("AUD", "USD"), "USDCAD": ("USD", "CAD")}
 
 
-def fetch(url, path, minsize=200, tries=3, timeout=150):
+def fetch(url, path, minsize=200, tries=2, timeout=30):
     if os.path.exists(path) and os.path.getsize(path) > minsize: return open(path, "rb").read()
     last = None
     for k in range(tries):
@@ -73,6 +73,10 @@ def pick(rows, pats):
 
 def load_rates(ext, log):
     out = {}
+    try:
+        urllib.request.urlopen(urllib.request.Request("https://fred.stlouisfed.org/graph/fredgraph.csv?id=IRSTCI01USM156N", headers=UA), timeout=25).read(200)
+    except Exception as e:
+        log.append("FRED indisponibil (sonda): %r" % (e,)); return out
     for ccy, cc in RATE_IDS.items():
         for pre in ("IR3TIB01", "IRSTCI01"):
             sid = "%s%sM156N" % (pre, cc)
