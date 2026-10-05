@@ -493,7 +493,7 @@ class H(BaseHTTPRequestHandler):
                     if q: return self.send(200, http("%s/users/current/accounts/%s/symbols/%s/specification" % (cb, AID, urllib.parse.quote(q, safe="")), tries=2, timeout=20))
                     return self.send(200, http("%s/users/current/accounts/%s/symbols" % (cb, AID), tries=2, timeout=30))
                 except Exception as e: return self.send(200, {"err": repr(e)[:300]})
-            if u.path in ("/api/evt", "/api/evt2", "/api/evt3", "/api/evt4", "/api/evt5", "/api/evt6", "/api/evt7", "/api/evt8", "/api/evt9", "/api/evt10", "/api/evt11", "/api/evt12", "/api/evt13"):
+            if u.path in ("/api/evt", "/api/evt2", "/api/evt3", "/api/evt4", "/api/evt5", "/api/evt6", "/api/evt7", "/api/evt8", "/api/evt9", "/api/evt10", "/api/evt11", "/api/evt12", "/api/evt13", "/api/evt14"):
                 try: return self.send(200, json.load(open(os.path.join(DATA, u.path.rsplit("/", 1)[1], "result.json"))))
                 except Exception: return self.send(200, {"state": "nu a rulat inca"})
             if u.path == "/api/lab/journal":
@@ -673,7 +673,7 @@ def autopilot():
 
 def evt_once():
     """Studii (lab/eventstudy.py, lab/study2.py): ruleaza o data per versiune, separat de cautare, la prioritate mica."""
-    jobs = [("evt", "lab.eventstudy", "eventstudy.py"), ("evt2", "lab.study2", "study2.py"), ("evt3", "lab.study3", "study3.py"), ("evt4", "lab.classic", "classic.py"), ("evt5", "lab.study5", "study5.py"), ("evt6", "lab.study6", "study6.py"), ("evt7", "lab.study7", "study7.py"), ("evt8", "lab.study8", "study8.py"), ("evt9", "lab.study9", "study9.py"), ("evt10", "lab.study10", "study10.py"), ("evt11", "lab.study11", "study11.py"), ("evt12", "lab.study12", "study12.py"), ("evt13", "lab.study13", "study13.py")]
+    jobs = [("evt", "lab.eventstudy", "eventstudy.py"), ("evt2", "lab.study2", "study2.py"), ("evt3", "lab.study3", "study3.py"), ("evt4", "lab.classic", "classic.py"), ("evt5", "lab.study5", "study5.py"), ("evt6", "lab.study6", "study6.py"), ("evt7", "lab.study7", "study7.py"), ("evt8", "lab.study8", "study8.py"), ("evt9", "lab.study9", "study9.py"), ("evt10", "lab.study10", "study10.py"), ("evt11", "lab.study11", "study11.py"), ("evt12", "lab.study12", "study12.py"), ("evt13", "lab.study13", "study13.py"), ("evt14", "lab.study14", "study14.py")]
     while True:
         time.sleep(45)
         try:
