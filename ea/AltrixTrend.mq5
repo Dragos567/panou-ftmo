@@ -6,7 +6,7 @@
 //| ORICE grafic (ex. EURUSD D1); gestioneaza toate simbolurile.     |
 //+------------------------------------------------------------------+
 #property copyright "Altrix"
-#property version   "1.00"
+#property version   "1.01"
 #property description "Trend following zilnic, vol targeting, garduri FTMO (zilnic 3.5%, total 8.5%)."
 #include <Trade/Trade.mqh>
 
@@ -88,7 +88,9 @@ int OnInit()
 
    trade.SetExpertMagicNumber((ulong)InpMagic);
    trade.SetDeviationInPoints(50);
-   EventSetTimer(20);
+   for(int i = 0; i < g_nS; i++)                          // diagnostic: cate bare D1 are fiecare simbol (forteaza si sincronizarea istoricului)
+      Print("[AltrixTrend] ", g_sym[i], ": bare D1 disponibile = ", Bars(g_sym[i], PERIOD_D1), ", mod tranzactionare = ", (int)SymbolInfoInteger(g_sym[i], SYMBOL_TRADE_MODE));
+   EventSetTimer(MQLInfoInteger(MQL_TESTER) ? 3600 : 20);   // in tester ruleaza din ora in ora (suficient pentru un EA saptamanal)
    Notify(StringFormat("pornit: %d simboluri, balanta initiala %.2f, mod %s", g_nS, g_initBal, InpTradeEnabled ? "LIVE" : "USCAT"));
    return INIT_SUCCEEDED;
 }
@@ -317,7 +319,9 @@ bool Guards()
 
 void OnTimer()
 {
+   static bool once = false;
    bool ok = Guards();
+   if(!once) { once = true; Print("[AltrixTrend] primul ciclu: garduri=", ok, " tradeEnabled=", InpTradeEnabled, " terminalTrade=", TerminalInfoInteger(TERMINAL_TRADE_ALLOWED), " contTrade=", AccountInfoInteger(ACCOUNT_TRADE_ALLOWED), " W1=", TimeToString(iTime(g_sym[0], PERIOD_W1, 0)), " acum=", TimeToString(TimeCurrent())); }
    double eq = AccountInfoDouble(ACCOUNT_EQUITY);
    if(ok && InpTradeEnabled && TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) && AccountInfoInteger(ACCOUNT_TRADE_ALLOWED))
    {
