@@ -121,8 +121,8 @@ def main():
             try:
                 if len(daily_series(a.data, sy)[0]) >= 1000: have += 1
             except Exception: pass
-        if have < int(os.environ.get("S12_MIN", "20")) and not os.path.exists(os.path.join(out, "force")):
-            res["state"] = "asteapta"; res["motiv"] = "istoric zilnic descarcat pentru %d/%d piete noi (minim 20)" % (have, len(NEW)); save(res); return
+        if have < int(os.environ.get("S12_MIN", "10")) and not os.path.exists(os.path.join(out, "force")):
+            res["state"] = "asteapta"; res["motiv"] = "istoric zilnic descarcat pentru %d/%d piete noi (minim 10)" % (have, len(NEW)); save(res); return
         try: spd = json.load(open(os.path.join(a.data, "spread.json")))
         except Exception: spd = {}
         # ---------------- A: trend ----------------
