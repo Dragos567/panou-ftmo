@@ -6,7 +6,7 @@ import os, json, time, argparse
 import numpy as np
 from .study8 import load_tf, agg
 
-VER = 1
+VER = 2
 MARKETS = ["EURUSD", "GBPUSD", "USDJPY", "GOLD", "US100", "US500", "US30", "UK100", "DAX", "NIKKEI"]
 ASSUMED = {"US100": 1.0, "US500": 0.5, "US30": 2.0, "UK100": 1.0}
 COMM = {"EURUSD": 0.00005, "GBPUSD": 0.00005, "USDJPY": 0.005}
@@ -90,6 +90,7 @@ def main():
                         if not np.isfinite(V[i - 1, j]) or V[i - 1, j] <= 0: continue
                         if L: sg = np.sign(lpf[i - 1, j] - lpf[i - 1 - L, j])
                         else: sg = float(np.mean([np.sign(lpf[i - 1, j] - lpf[i - 1 - l, j]) for l in LBS]))
+                        if not np.isfinite(sg): continue
                         wn = sg * min(4.0, 0.10 / (V[i - 1, j] * np.sqrt(252))) / len(syms)
                         c = abs(wn - W[j]) * (cstf[syms[j]][0] + cstf[syms[j]][1]) / max(P[i - 1, j] if np.isfinite(P[i - 1, j]) else lastp[j], 1e-9)
                         gross[i] -= 0; net[i] -= c; turn[i] += abs(wn - W[j]); W[j] = wn
