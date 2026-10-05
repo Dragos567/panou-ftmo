@@ -15,6 +15,7 @@ PORT = int(os.environ.get("PANOU_PORT", "8080"))
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 SYMS = {"NIKKEI": "JP225.cash", "GOLD": "XAUUSD", "EURUSD": "EURUSD", "USDJPY": "USDJPY", "DAX": "GER40.cash", "GBPUSD": "GBPUSD", "UK100": "UK100.cash"}
+HSYMS = {"US100": "US100.cash", "US500": "US500.cash"}      # doar pentru istoric (laborator); nu intra in dashboard / cotatii live
 TFS = ["1m", "5m", "15m", "1h", "4h", "1d"]
 WANT = {"1m": 3000, "5m": 4000, "15m": 4000, "1h": 4000, "4h": 3000, "1d": 2000}
 TFSEC = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
@@ -67,7 +68,7 @@ def iso(t): return t.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 def parse_t(s): return int(dt.datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=dt.timezone.utc).timestamp())
 def fetch_candles(sym, tf, before=None, limit=1000, bulk=False):
     _, mb = bases()
-    u = "%s/users/current/accounts/%s/historical-market-data/symbols/%s/timeframes/%s/candles?limit=%d" % (mb, AID, urllib.parse.quote(SYMS[sym], safe=""), tf, limit)
+    u = "%s/users/current/accounts/%s/historical-market-data/symbols/%s/timeframes/%s/candles?limit=%d" % (mb, AID, urllib.parse.quote(SYMS.get(sym) or HSYMS[sym], safe=""), tf, limit)
     if before: u += "&startTime=" + urllib.parse.quote(iso(dt.datetime.utcfromtimestamp(before)))
     out = []
     for c in http(u, sem=SEM_BULK if bulk else SEM_LIVE) or []:
@@ -718,7 +719,7 @@ if __name__ == "__main__":
     load_disk()
     try:
         from lab.hist import Hist
-        HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI,DAX").split(","), float(os.environ.get("HIST_YEARS", "10")))
+        HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI,DAX,GOLD,US100,US500,GBPUSD,USDJPY").split(","), float(os.environ.get("HIST_YEARS", "10")))
         HIST.start()
     except Exception as e: log("hist init", repr(e))
     def start_duka():
