@@ -1,28 +1,31 @@
 //+------------------------------------------------------------------+
-//| AltrixTrend.mq5                                                  |
-//| Trend lent (ansamblu L120/L250) cu vol targeting, portofoliu     |
-//| multi-simbol, rebalansare saptamanala. Garduri FTMO incluse.     |
-//| Portat din laboratorul Altrix (studiile 11/12). Se ataseaza pe   |
-//| ORICE grafic (ex. EURUSD D1); gestioneaza toate simbolurile.     |
+//| AltrixTrend.mq5  v2.0                                            |
+//| Trend following (ansamblu L120/L250 pe bare zilnice), vol        |
+//| targeting, portofoliu multi-simbol, rebalansare saptamanala.     |
+//| Garduri FTMO: hard-stop zilnic, oprire totala, plafon expunere.  |
+//| Se ataseaza pe EURUSD H1 (sau orice timeframe); gestioneaza toate|
+//| simbolurile din lista. Merge identic live si in Strategy Tester. |
 //+------------------------------------------------------------------+
 #property copyright "Altrix"
-#property version   "1.01"
-#property description "Trend following zilnic, vol targeting, garduri FTMO (zilnic 3.5%, total 8.5%)."
+#property version   "2.00"
+#property strict
 #include <Trade/Trade.mqh>
 
-input string InpSymbols        = "EURUSD,GBPUSD,USDJPY,XAUUSD,US100.cash,US500.cash,US30.cash,GER40.cash,UK100.cash,JP225.cash"; // simboluri (numele din MT5-ul tau)
+input string InpSymbols        = "EURUSD,GBPUSD,USDJPY,XAUUSD,US100.cash,US500.cash,US30.cash,GER40.cash,UK100.cash,JP225.cash"; // simboluri LIVE (numele din MT5-ul tau)
+input string InpTesterSymbols  = "EURUSD,GBPUSD,USDJPY,XAUUSD"; // simboluri folosite DOAR in Strategy Tester (lista scurta = test rapid)
 input string InpLookbacks      = "120,250";   // zile; semnal = media semnelor
 input double InpTargetVolPct   = 10.0;        // vol anuala tinta per simbol (%)
-input double InpMaxLeverage    = 4.0;         // plafon levier per simbol (x equity, inainte de impartirea la nr. simboluri active)
+input double InpMaxLeverage    = 4.0;         // plafon levier per simbol (x equity)
+input double InpMaxTotalLev    = 12.0;        // plafon expunere totala (suma notional / equity); contul are 1:30
 input int    InpVolSpan        = 60;          // EWMA vol (zile)
-input double InpRebalBand      = 0.25;        // nu retranzactiona daca volumul tinta difera < 25% de cel curent
+input double InpRebalBand      = 0.25;        // nu retranzactiona daca volumul tinta difera < 25% fata de cel curent
 input double InpDailyStopPct   = 3.5;         // hard-stop zilnic (% din max(balance,equity) la inceputul zilei server)
 input double InpMaxDDPct       = 8.5;         // oprire totala (% din balanta initiala). FTMO: 10%
-input double InpInitialBalance = 0;           // 0 = balanta la prima pornire; pune dimensiunea contului FTMO daca ai pornit tarziu
+input double InpInitialBalance = 0;           // 0 = balanta la prima pornire; pune dimensiunea contului daca ai pornit tarziu
 input double InpProfitTargetPct= 0;           // 0 = oprit; ex. 10 / 5 = inchide tot si sta pe loc la tinta
 input double InpEmergencySL_ATR= 6.0;         // stop de urgenta la N x ATR(20) zilnic; 0 = fara stop
 input long   InpMagic          = 20261005;
-input string InpNtfyTopic      = "";          // topic ntfy.sh (gol = fara notificari); permite https://ntfy.sh in Tools>Options>Expert Advisors
+input string InpNtfyTopic      = "";          // topic ntfy.sh (gol = fara notificari)
 input bool   InpTradeEnabled   = true;        // false = doar calculeaza si afiseaza (mod uscat)
 
 CTrade   trade;
@@ -34,39 +37,43 @@ long     g_dayNo = -1;
 bool     g_dayLocked = false;
 string   g_gvKill, g_gvInit, g_gvWk;
 string   g_info = "";
-int      g_fail = 0;            // ordine esuate in rebalansarea curenta (piata inchisa etc.)
+int      g_fail = 0;
 int      g_tries = 0;
+datetime g_lastCheck = 0;
+bool     g_tester = false;
 
 //+------------------------------------------------------------------+
 void Notify(const string msg)
 {
    Print("[AltrixTrend] ", msg);
-   if(InpNtfyTopic == "") return;
+   if(InpNtfyTopic == "" || g_tester) return;
    char data[], res[]; string hdr = "Content-Type: text/plain; charset=utf-8\r\n", rh;
    int n = StringToCharArray("AltrixTrend: " + msg, data, 0, WHOLE_ARRAY, CP_UTF8);
    if(n > 0) ArrayResize(data, n - 1);
    int rc = WebRequest("POST", "https://ntfy.sh/" + InpNtfyTopic, hdr, 5000, data, res, rh);
-   if(rc == -1) Print("ntfy: WebRequest a esuat (", GetLastError(), "). Permite URL-ul in Tools > Options > Expert Advisors.");
+   if(rc == -1) Print("ntfy: WebRequest a esuat (", GetLastError(), "). Permite https://ntfy.sh in Tools > Options > Expert Advisors.");
 }
 
 //+------------------------------------------------------------------+
 int OnInit()
 {
+   g_tester = (bool)MQLInfoInteger(MQL_TESTER);
+   string list = g_tester ? InpTesterSymbols : InpSymbols;
    string parts[];
-   int n = StringSplit(InpSymbols, ',', parts);
+   int n = StringSplit(list, ',', parts);
    ArrayResize(g_sym, 0);
    for(int i = 0; i < n; i++)
    {
       string s = parts[i]; StringTrimLeft(s); StringTrimRight(s);
       if(s == "") continue;
-      if(!SymbolSelect(s, true)) { Print("Simbol indisponibil, sar peste: ", s); continue; }
+      if(!SymbolSelect(s, true)) { Print("[AltrixTrend] Simbol indisponibil, sar peste: ", s); continue; }
       int k = ArraySize(g_sym); ArrayResize(g_sym, k + 1); g_sym[k] = s;
    }
    g_nS = ArraySize(g_sym);
-   if(g_nS == 0) { Print("Niciun simbol valid."); return INIT_FAILED; }
+   if(g_nS == 0) { Print("[AltrixTrend] Niciun simbol valid in lista."); return INIT_FAILED; }
 
    n = StringSplit(InpLookbacks, ',', parts);
-   ArrayResize(g_lb, 0);
+   ArrayResize(g_lb, 0); g_maxLb = 0;
    for(int i = 0; i < n; i++)
    {
       int L = (int)StringToInteger(parts[i]);
@@ -75,11 +82,11 @@ int OnInit()
       if(L > g_maxLb) g_maxLb = L;
    }
    g_nL = ArraySize(g_lb);
-   if(g_nL == 0) { Print("Lookback-uri invalide."); return INIT_FAILED; }
+   if(g_nL == 0) { Print("[AltrixTrend] Lookback-uri invalide."); return INIT_FAILED; }
 
    long acc = AccountInfoInteger(ACCOUNT_LOGIN);
    g_gvKill = "ALTRIX_KILL_" + (string)acc; g_gvInit = "ALTRIX_INIT_" + (string)acc; g_gvWk = "ALTRIX_WK_" + (string)acc;
-   if(MQLInfoInteger(MQL_TESTER)) { GlobalVariableDel(g_gvKill); GlobalVariableDel(g_gvInit); GlobalVariableDel(g_gvWk); }
+   if(g_tester) { GlobalVariableDel(g_gvKill); GlobalVariableDel(g_gvInit); GlobalVariableDel(g_gvWk); }
 
    if(InpInitialBalance > 0) g_initBal = InpInitialBalance;
    else if(GlobalVariableCheck(g_gvInit)) g_initBal = GlobalVariableGet(g_gvInit);
@@ -88,16 +95,12 @@ int OnInit()
 
    trade.SetExpertMagicNumber((ulong)InpMagic);
    trade.SetDeviationInPoints(50);
-   for(int i = 0; i < g_nS; i++)                          // diagnostic: cate bare D1 are fiecare simbol (forteaza si sincronizarea istoricului)
-      Print("[AltrixTrend] ", g_sym[i], ": bare D1 disponibile = ", Bars(g_sym[i], PERIOD_D1), ", mod tranzactionare = ", (int)SymbolInfoInteger(g_sym[i], SYMBOL_TRADE_MODE));
-   EventSetTimer(MQLInfoInteger(MQL_TESTER) ? 3600 : 20);   // in tester ruleaza din ora in ora (suficient pentru un EA saptamanal)
-   Notify(StringFormat("pornit: %d simboluri, balanta initiala %.2f, mod %s", g_nS, g_initBal, InpTradeEnabled ? "LIVE" : "USCAT"));
+   if(!g_tester) EventSetTimer(20);          // live: ruleaza si fara tick-uri; in tester totul vine din OnTick
+   Notify(StringFormat("pornit v2.0: %d simboluri (%s), balanta initiala %.2f, mod %s", g_nS, g_tester ? "TESTER" : "LIVE", g_initBal, InpTradeEnabled ? "TRANZACTIONARE" : "USCAT"));
    return INIT_SUCCEEDED;
 }
 
 void OnDeinit(const int reason) { EventKillTimer(); Comment(""); }
-
-void OnTick() { /* totul ruleaza din OnTimer, ca sa mearga pe orice grafic */ }
 
 //+------------------------------------------------------------------+
 //| pozitii                                                           |
@@ -132,7 +135,7 @@ void CloseSymbol(const string s)
    {
       ulong t = PositionGetTicket(i); if(t == 0) continue;
       if(PositionGetString(POSITION_SYMBOL) != s || PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
-      if(!trade.PositionClose(t)) { g_fail++; Print("Inchidere esuata ", s, " rc=", trade.ResultRetcode()); }
+      if(!trade.PositionClose(t)) { g_fail++; Print("[AltrixTrend] Inchidere esuata ", s, " rc=", trade.ResultRetcode()); }
    }
 }
 
@@ -142,7 +145,7 @@ void CloseAll()
    {
       ulong t = PositionGetTicket(i); if(t == 0) continue;
       if(PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
-      if(!trade.PositionClose(t)) Print("Inchidere esuata ticket ", t, " rc=", trade.ResultRetcode());
+      if(!trade.PositionClose(t)) Print("[AltrixTrend] Inchidere esuata ticket ", t, " rc=", trade.ResultRetcode());
    }
 }
 
@@ -180,7 +183,7 @@ void OpenPos(const string s, const bool buy, const double vol)
    bool ok = buy ? trade.Buy(vol, s, 0, sl, 0, "ALTRIX") : trade.Sell(vol, s, 0, sl, 0, "ALTRIX");
    if(!ok && sl != 0)                                   // stop invalid pentru broker: reincearca fara stop
       ok = buy ? trade.Buy(vol, s, 0, 0, 0, "ALTRIX") : trade.Sell(vol, s, 0, 0, 0, "ALTRIX");
-   if(!ok) { g_fail++; Print("Deschidere esuata ", s, " vol=", vol, " rc=", trade.ResultRetcode(), " ", trade.ResultRetcodeDescription()); }
+   if(!ok) { g_fail++; Print("[AltrixTrend] Deschidere esuata ", s, " vol=", vol, " rc=", trade.ResultRetcode(), " ", trade.ResultRetcodeDescription()); }
 }
 
 void ReduceVolume(const string s, const bool wasLong, double vol)
@@ -189,7 +192,8 @@ void ReduceVolume(const string s, const bool wasLong, double vol)
    trade.SetTypeFillingBySymbol(s);
    if(!hedging)                                         // netting: o tranzactie opusa reduce pozitia
    {
-      if(wasLong) trade.Sell(vol, s, 0, 0, 0, "ALTRIX"); else trade.Buy(vol, s, 0, 0, 0, "ALTRIX");
+      bool ok = wasLong ? trade.Sell(vol, s, 0, 0, 0, "ALTRIX") : trade.Buy(vol, s, 0, 0, 0, "ALTRIX");
+      if(!ok) { g_fail++; Print("[AltrixTrend] Reducere esuata ", s, " rc=", trade.ResultRetcode()); }
       return;
    }
    double step = SymbolInfoDouble(s, SYMBOL_VOLUME_STEP);
@@ -202,21 +206,23 @@ void ReduceVolume(const string s, const bool wasLong, double vol)
       cv = MathFloor(cv / step + 1e-9) * step;
       if(cv <= 0) continue;
       bool ok = (cv >= pv - 1e-9) ? trade.PositionClose(t) : trade.PositionClosePartial(t, cv);
-      if(ok) vol -= cv; else { g_fail++; Print("Reducere esuata ", s, " rc=", trade.ResultRetcode()); }
+      if(ok) vol -= cv; else { g_fail++; Print("[AltrixTrend] Reducere esuata ", s, " rc=", trade.ResultRetcode()); }
    }
 }
 
 //+------------------------------------------------------------------+
 //| semnal + volatilitate                                             |
+//|  returnez: 1 = ok, 0 = simbol neeligibil, -1 = istoric neincarcat |
 //+------------------------------------------------------------------+
-bool Compute(const string s, double &sig, double &sd)
+int Compute(const string s, double &sig, double &sd)
 {
-   if(SymbolInfoInteger(s, SYMBOL_TRADE_MODE) != SYMBOL_TRADE_MODE_FULL) return false;
+   if(SymbolInfoInteger(s, SYMBOL_TRADE_MODE) != SYMBOL_TRADE_MODE_FULL) return 0;
    double c[];
    ArraySetAsSeries(c, true);
    int want = MathMax(g_maxLb + 2, 450);
    int got = CopyClose(s, PERIOD_D1, 1, want, c);       // c[0] = ultima bara D1 inchisa
-   if(got < g_maxLb + 30) return false;
+   if(got < 0) return -1;                               // istoricul se sincronizeaza; reincerc la urmatorul ciclu
+   if(got < g_maxLb + 30) return 0;
    double sum = 0;
    for(int j = 0; j < g_nL; j++) sum += (c[0] > c[g_lb[j]]) ? 1.0 : -1.0;
    sig = sum / g_nL;
@@ -228,7 +234,7 @@ bool Compute(const string s, double &sig, double &sd)
       if(first) { v = r * r; first = false; } else v = lam * v + (1.0 - lam) * r * r;
    }
    sd = MathSqrt(v);
-   return (sd > 0);
+   return (sd > 0) ? 1 : 0;
 }
 
 double NormLots(const string s, double lots)
@@ -240,17 +246,23 @@ double NormLots(const string s, double lots)
    return MathMin(lots, mx);
 }
 
+// valoarea in moneda contului a unei miscari de 1.0 in pret, per 1 lot
+double ValuePerUnit(const string s)
+{
+   double tv = SymbolInfoDouble(s, SYMBOL_TRADE_TICK_VALUE), ts = SymbolInfoDouble(s, SYMBOL_TRADE_TICK_SIZE);
+   if(tv <= 0 || ts <= 0) return 0;
+   return tv / ts;
+}
+
 double TargetLots(const string s, const double sig, const double sd, const int nAct, const double eq)
 {
-   double price = SymbolInfoDouble(s, SYMBOL_BID), tv = SymbolInfoDouble(s, SYMBOL_TRADE_TICK_VALUE), ts = SymbolInfoDouble(s, SYMBOL_TRADE_TICK_SIZE);
-   if(price <= 0 || tv <= 0 || ts <= 0 || nAct <= 0) return 0;
-   double vppu = tv / ts;                               // valoare in moneda contului a unei miscari de 1.0 in pret, per 1 lot
+   double price = SymbolInfoDouble(s, SYMBOL_BID), vppu = ValuePerUnit(s);
+   if(price <= 0 || vppu <= 0 || nAct <= 0) return 0;
    double dollars = eq * (InpTargetVolPct / 100.0) / MathSqrt(252.0) / nAct;   // volatilitate zilnica tinta alocata simbolului
    double lots = dollars / (sd * price * vppu);
    double cap = InpMaxLeverage * eq / nAct / (price * vppu);
    lots = MathMin(lots, cap) * MathAbs(sig);
-   lots = NormLots(s, lots);
-   return (sig > 0) ? lots : -lots;
+   return (sig > 0) ? lots : -lots;                     // inca nenormalizat; se normalizeaza dupa plafonul total
 }
 
 void ApplyTarget(const string s, const double tgt)
@@ -258,32 +270,46 @@ void ApplyTarget(const string s, const double tgt)
    double cur = NetVolume(s);
    if(MathAbs(tgt) < 1e-9)
    {
-      if(MathAbs(cur) > 1e-9) { Print(s, ": inchid (semnal 0 / sub lot minim)"); CloseSymbol(s); }
+      if(MathAbs(cur) > 1e-9) { Print("[AltrixTrend] ", s, ": inchid (semnal 0 / sub lot minim)"); CloseSymbol(s); }
       return;
    }
    if(MathAbs(cur) < 1e-9) { OpenPos(s, tgt > 0, MathAbs(tgt)); return; }
    if((cur > 0) != (tgt > 0)) { CloseSymbol(s); OpenPos(s, tgt > 0, MathAbs(tgt)); return; }
    double a = MathAbs(cur), b = MathAbs(tgt);
    if(MathAbs(b - a) / a <= InpRebalBand) return;
-   if(b > a) OpenPos(s, tgt > 0, NormLots(s, b - a));
+   if(b > a) { double add = NormLots(s, b - a); if(add > 0) OpenPos(s, tgt > 0, add); }
    else      ReduceVolume(s, cur > 0, a - b);
 }
 
 void Rebalance()
 {
    g_fail = 0;
-   double sig[], sd[]; bool ok[]; int nAct = 0;
-   ArrayResize(sig, g_nS); ArrayResize(sd, g_nS); ArrayResize(ok, g_nS);
-   for(int i = 0; i < g_nS; i++) { ok[i] = Compute(g_sym[i], sig[i], sd[i]); if(ok[i]) nAct++; }
+   double sig[], sd[], tl[]; int st[]; int nAct = 0, notReady = 0;
+   ArrayResize(sig, g_nS); ArrayResize(sd, g_nS); ArrayResize(tl, g_nS); ArrayResize(st, g_nS);
+   for(int i = 0; i < g_nS; i++)
+   {
+      sig[i] = 0; sd[i] = 0; st[i] = Compute(g_sym[i], sig[i], sd[i]);
+      if(st[i] == 1) nAct++; else if(st[i] < 0) notReady++;
+   }
+   if(notReady > 0) g_fail++;                           // istoric incomplet: nu marca saptamana ca facuta, reincearca
    double eq = AccountInfoDouble(ACCOUNT_EQUITY);
+   double gross = 0;
+   for(int i = 0; i < g_nS; i++)
+   {
+      tl[i] = (st[i] == 1) ? TargetLots(g_sym[i], sig[i], sd[i], nAct, eq) : 0.0;
+      gross += MathAbs(tl[i]) * SymbolInfoDouble(g_sym[i], SYMBOL_BID) * ValuePerUnit(g_sym[i]) / MathMax(eq, 1.0);
+   }
+   double scale = (gross > InpMaxTotalLev && gross > 0) ? InpMaxTotalLev / gross : 1.0;   // plafon expunere totala (marja 1:30)
    string rep = "";
    for(int i = 0; i < g_nS; i++)
    {
-      double t = ok[i] ? TargetLots(g_sym[i], sig[i], sd[i], nAct, eq) : 0.0;
+      double t = NormLots(g_sym[i], MathAbs(tl[i]) * scale);
+      if(tl[i] < 0) t = -t;
       rep += StringFormat("%s:%.2f ", g_sym[i], t);
-      if(InpTradeEnabled) ApplyTarget(g_sym[i], t);
+      if(InpTradeEnabled && notReady == 0) ApplyTarget(g_sym[i], t);
    }
-   if(g_tries <= 1 || g_fail == 0) Notify(StringFormat("rebalansare (%d active, equity %.2f, esecuri %d): %s", nAct, eq, g_fail, rep));
+   if(notReady > 0) Print("[AltrixTrend] istoric neincarcat pentru ", notReady, " simboluri; reincerc");
+   else Notify(StringFormat("rebalansare (%d active, equity %.2f, expunere %.1fx, esecuri %d): %s", nAct, eq, gross * scale, g_fail, rep));
 }
 
 //+------------------------------------------------------------------+
@@ -317,28 +343,39 @@ bool Guards()
    return true;
 }
 
-void OnTimer()
+//+------------------------------------------------------------------+
+//| ciclul principal (OnTick + OnTimer)                               |
+//+------------------------------------------------------------------+
+void Step()
 {
-   static bool once = false;
    bool ok = Guards();
-   if(!once) { once = true; Print("[AltrixTrend] primul ciclu: garduri=", ok, " tradeEnabled=", InpTradeEnabled, " terminalTrade=", TerminalInfoInteger(TERMINAL_TRADE_ALLOWED), " contTrade=", AccountInfoInteger(ACCOUNT_TRADE_ALLOWED), " W1=", TimeToString(iTime(g_sym[0], PERIOD_W1, 0)), " acum=", TimeToString(TimeCurrent())); }
-   double eq = AccountInfoDouble(ACCOUNT_EQUITY);
-   if(ok && InpTradeEnabled && TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) && AccountInfoInteger(ACCOUNT_TRADE_ALLOWED))
+   datetime now = TimeCurrent();
+   int gap = g_tester ? 3600 : 20;                      // rebalansarea se verifica rar; garzile ruleaza la fiecare apel
+   if(ok && now - g_lastCheck >= gap)
    {
-      datetime wk = iTime(g_sym[0], PERIOD_W1, 0);
-      double last = GlobalVariableCheck(g_gvWk) ? GlobalVariableGet(g_gvWk) : 0;
-      if(wk > 0 && (double)wk != last && TimeCurrent() >= wk + 2 * 3600)
+      g_lastCheck = now;
+      if(InpTradeEnabled && TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) && AccountInfoInteger(ACCOUNT_TRADE_ALLOWED))
       {
-         g_tries++;
-         Rebalance();
-         if(g_fail == 0 || TimeCurrent() > wk + 24 * 3600)     // reincearca la 20 s daca ordinele au esuat (piata inchisa), maxim 24 h
+         datetime wk = iTime(_Symbol, PERIOD_W1, 0);    // saptamana graficului curent (mereu sincronizat)
+         double last = GlobalVariableCheck(g_gvWk) ? GlobalVariableGet(g_gvWk) : 0;
+         if(wk > 0 && (double)wk != last && now >= wk + 2 * 3600)
          {
-            GlobalVariableSet(g_gvWk, (double)wk); g_tries = 0;
-            if(g_fail > 0) Notify("rebalansare incheiata cu esecuri dupa 24h; vezi jurnalul");
+            g_tries++;
+            Rebalance();
+            if(g_fail == 0 || now > wk + 24 * 3600 || g_tries >= 40)
+            {
+               GlobalVariableSet(g_gvWk, (double)wk); g_tries = 0;
+               if(g_fail > 0) Notify("rebalansare incheiata cu esecuri; vezi jurnalul");
+            }
          }
       }
    }
-   Comment(StringFormat("AltrixTrend\nStare: %s\nEquity: %.2f | Balanta init.: %.2f\nRef. zi: %.2f | Zi: %+.2f%%\nDD total: %.2f%% (limita %.1f%%)\nPozitii: %d",
-           g_info, eq, g_initBal, g_dayRef, g_dayRef > 0 ? (eq / g_dayRef - 1.0) * 100.0 : 0.0, g_initBal > 0 ? (1.0 - eq / g_initBal) * 100.0 : 0.0, InpMaxDDPct, CountPositions()));
+   if(!g_tester)
+      Comment(StringFormat("AltrixTrend v2.0\nStare: %s\nEquity: %.2f | Balanta init.: %.2f\nRef. zi: %.2f | Zi: %+.2f%%\nDD total: %.2f%% (limita %.1f%%)\nPozitii: %d",
+              g_info, AccountInfoDouble(ACCOUNT_EQUITY), g_initBal, g_dayRef, g_dayRef > 0 ? (AccountInfoDouble(ACCOUNT_EQUITY) / g_dayRef - 1.0) * 100.0 : 0.0,
+              g_initBal > 0 ? (1.0 - AccountInfoDouble(ACCOUNT_EQUITY) / g_initBal) * 100.0 : 0.0, InpMaxDDPct, CountPositions()));
 }
+
+void OnTick()  { Step(); }
+void OnTimer() { Step(); }
 //+------------------------------------------------------------------+
