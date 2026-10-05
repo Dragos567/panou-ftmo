@@ -471,6 +471,13 @@ class H(BaseHTTPRequestHandler):
                 ct = {".png": "image/png", ".js": "application/javascript", ".webmanifest": "application/manifest+json"}.get(ext, "application/octet-stream")
                 with open(os.path.join(HERE, u.path.lstrip("/")), "rb") as f: return self.send(200, f.read(), ct)
             if u.path == "/api/lab": return self.send(200, lab_summary(qs))
+            if u.path == "/api/symbols":
+                cb, _ = bases()
+                try:
+                    q = qs.get("spec", [""])[0]
+                    if q: return self.send(200, http("%s/users/current/accounts/%s/symbols/%s/specification" % (cb, AID, urllib.parse.quote(q, safe="")), tries=2, timeout=20))
+                    return self.send(200, http("%s/users/current/accounts/%s/symbols" % (cb, AID), tries=2, timeout=30))
+                except Exception as e: return self.send(200, {"err": repr(e)[:300]})
             if u.path in ("/api/evt", "/api/evt2", "/api/evt3", "/api/evt4", "/api/evt5", "/api/evt6", "/api/evt7", "/api/evt8", "/api/evt9", "/api/evt10", "/api/evt11"):
                 try: return self.send(200, json.load(open(os.path.join(DATA, u.path.rsplit("/", 1)[1], "result.json"))))
                 except Exception: return self.send(200, {"state": "nu a rulat inca"})
