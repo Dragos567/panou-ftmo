@@ -471,7 +471,7 @@ class H(BaseHTTPRequestHandler):
                 ct = {".png": "image/png", ".js": "application/javascript", ".webmanifest": "application/manifest+json"}.get(ext, "application/octet-stream")
                 with open(os.path.join(HERE, u.path.lstrip("/")), "rb") as f: return self.send(200, f.read(), ct)
             if u.path == "/api/lab": return self.send(200, lab_summary(qs))
-            if u.path in ("/api/evt", "/api/evt2", "/api/evt3", "/api/evt4", "/api/evt5", "/api/evt6", "/api/evt7"):
+            if u.path in ("/api/evt", "/api/evt2", "/api/evt3", "/api/evt4", "/api/evt5", "/api/evt6", "/api/evt7", "/api/evt8"):
                 try: return self.send(200, json.load(open(os.path.join(DATA, u.path.rsplit("/", 1)[1], "result.json"))))
                 except Exception: return self.send(200, {"state": "nu a rulat inca"})
             if u.path == "/api/lab/journal":
@@ -651,17 +651,19 @@ def autopilot():
 
 def evt_once():
     """Studii (lab/eventstudy.py, lab/study2.py): ruleaza o data per versiune, separat de cautare, la prioritate mica."""
-    jobs = [("evt", "lab.eventstudy", "eventstudy.py"), ("evt2", "lab.study2", "study2.py"), ("evt3", "lab.study3", "study3.py"), ("evt4", "lab.classic", "classic.py"), ("evt5", "lab.study5", "study5.py"), ("evt6", "lab.study6", "study6.py"), ("evt7", "lab.study7", "study7.py")]
+    jobs = [("evt", "lab.eventstudy", "eventstudy.py"), ("evt2", "lab.study2", "study2.py"), ("evt3", "lab.study3", "study3.py"), ("evt4", "lab.classic", "classic.py"), ("evt5", "lab.study5", "study5.py"), ("evt6", "lab.study6", "study6.py"), ("evt7", "lab.study7", "study7.py"), ("evt8", "lab.study8", "study8.py")]
     while True:
         time.sleep(45)
         try:
             if not _have_np(): continue
             for dn, mod, fn in jobs:
                 rp = os.path.join(DATA, "evt" if dn == "evt" else dn, "result.json"); ver = None; st = None; stale = False
-                try: j = json.load(open(rp)); ver = j.get("ver"); st = j.get("state"); stale = time.time() - j.get("started", 0) > 3600 and st == "ruleaza"
+                wait_ = False
+                try: j = json.load(open(rp)); ver = j.get("ver"); st = j.get("state"); stale = time.time() - j.get("started", 0) > 3600 and st == "ruleaza"; wait_ = st == "asteapta" and time.time() - j.get("started", 0) < 600
                 except Exception: pass
                 try: want = int(open(os.path.join(HERE, "lab", fn)).read().split("VER = ", 1)[1].split()[0])
                 except Exception: continue
+                if wait_: continue
                 if ver == want and st in ("gata", "eroare") and not stale: continue
                 if st == "ruleaza" and not stale: continue
                 if not glob.glob(os.path.join(DATA, "hist", "DAX_1m", "p_*.bin")): continue
@@ -678,7 +680,7 @@ def lab_summary(qs):
     p = LABP.get("proc")
     out["auto"] = {"on": bool(cfg.get("on")), "minutes": cfg.get("minutes", 30), "found": cfg.get("found", 0), "running": bool(p and p.poll() is None)}
     out["duka"] = DUKA.status() if DUKA else {}
-    out["hist"] = {k: {"bars": v.get("bars"), "state": v.get("state"), "oldest": v.get("oldest"), "newest": v.get("newest")} for k, v in (HIST.status().items() if HIST else []) if isinstance(v, dict)}
+    out["hist"] = {k: {"bars": v.get("bars"), "state": v.get("state"), "oldest": v.get("oldest"), "newest": v.get("newest")} for k, v in (list(HIST.status().items() if HIST else []) + [(k + "_15m", v) for k, v in (HIST2.status().items() if HIST2 else [])]) if isinstance(v, dict)}
     jobs = sorted(d for d in os.listdir(lab) if os.path.isdir(os.path.join(lab, d))) if os.path.isdir(lab) else []
     rows = []; tot = {"tried": 0, "runs": 0, "val": 0, "robust": 0, "cost": 0, "time": 0, "ftmo": 0, "lock": 0, "relevant": 0, "secs": 0, "fin": 0}
     for j in jobs:
@@ -714,13 +716,17 @@ def lab_summary(qs):
     return out
 
 HIST = None
+HIST2 = None
 DUKA = None
 if __name__ == "__main__":
     load_disk()
     try:
         from lab.hist import Hist
-        HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI,DAX,GOLD,US100,US500,GBPUSD,USDJPY").split(","), float(os.environ.get("HIST_YEARS", "10")))
+        HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI,DAX").split(","), float(os.environ.get("HIST_YEARS", "10")))
         HIST.start()
+        global HIST2
+        HIST2 = Hist(DATA, fetch_candles, log, os.environ.get("HIST15_SYMS", "GOLD,US100,US500,GBPUSD,USDJPY").split(","), float(os.environ.get("HIST_YEARS", "10")), tf="15m")     # M15 direct (studiile pe timeframe mare)
+        HIST2.start()
     except Exception as e: log("hist init", repr(e))
     def start_duka():
         global DUKA
