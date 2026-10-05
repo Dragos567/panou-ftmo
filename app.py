@@ -475,6 +475,17 @@ class H(BaseHTTPRequestHandler):
                 ct = {".png": "image/png", ".js": "application/javascript", ".webmanifest": "application/manifest+json"}.get(ext, "application/octet-stream")
                 with open(os.path.join(HERE, u.path.lstrip("/")), "rb") as f: return self.send(200, f.read(), ct)
             if u.path == "/api/lab": return self.send(200, lab_summary(qs))
+            if u.path == "/api/swaps":
+                cb, _ = bases(); out = {}
+                names = {**SYMS, **HSYMS, **DSYMS}
+                from concurrent.futures import ThreadPoolExecutor
+                def one(k):
+                    try:
+                        sp = http("%s/users/current/accounts/%s/symbols/%s/specification" % (cb, AID, urllib.parse.quote(names[k], safe="")), tries=2, timeout=20) or {}
+                        return k, {x: sp.get(x) for x in ("symbol", "description", "swapMode", "swapLong", "swapShort", "swapRollover3Days", "contractSize", "tickSize", "tickValue", "tickSize", "digits", "commissionBase") if x in sp}
+                    except Exception as e: return k, {"err": repr(e)[:100]}
+                with ThreadPoolExecutor(6) as ex: out = dict(ex.map(one, list(names)))
+                return self.send(200, out)
             if u.path == "/api/symbols":
                 cb, _ = bases()
                 try:
