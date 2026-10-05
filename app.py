@@ -15,7 +15,7 @@ PORT = int(os.environ.get("PANOU_PORT", "8080"))
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 SYMS = {"NIKKEI": "JP225.cash", "GOLD": "XAUUSD", "EURUSD": "EURUSD", "USDJPY": "USDJPY", "DAX": "GER40.cash", "GBPUSD": "GBPUSD", "UK100": "UK100.cash"}
-HSYMS = {"US100": "US100.cash", "US500": "US500.cash"}      # doar pentru istoric (laborator); nu intra in dashboard / cotatii live
+HSYMS = {"US100": "US100.cash", "US500": "US500.cash", "US30": "US30.cash"}      # doar pentru istoric (laborator); nu intra in dashboard / cotatii live
 TFS = ["1m", "5m", "15m", "1h", "4h", "1d"]
 WANT = {"1m": 3000, "5m": 4000, "15m": 4000, "1h": 4000, "4h": 3000, "1d": 2000}
 TFSEC = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
@@ -715,6 +715,18 @@ def lab_summary(qs):
         except Exception: continue
     return out
 
+def _spread_poll():
+    """Spread real (ask-bid) pentru simbolurile doar-istoric (US100/US500/US30): esantion la ~25 s in acelasi spread.json (pe ora UTC). Nu intra in dashboard."""
+    while True:
+        for s in list(HSYMS):
+            try:
+                cb, _ = bases()
+                p = http("%s/users/current/accounts/%s/symbols/%s/current-price" % (cb, AID, urllib.parse.quote(HSYMS[s], safe="")), tries=1, timeout=10)
+                if p and p.get("ask") and p.get("bid") is not None and p["ask"] >= p["bid"]: spread_add(s, p["ask"] - p["bid"])
+            except Exception: pass
+            time.sleep(5)
+        time.sleep(10)
+
 HIST = None
 HIST2 = None
 DUKA = None
@@ -724,8 +736,9 @@ if __name__ == "__main__":
         from lab.hist import Hist
         HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI,DAX").split(","), float(os.environ.get("HIST_YEARS", "10")))
         HIST.start()
-        HIST2 = Hist(DATA, fetch_candles, log, os.environ.get("HIST15_SYMS", "GOLD,US100,US500,GBPUSD,USDJPY").split(","), float(os.environ.get("HIST_YEARS", "10")), tf="15m")     # M15 direct (studiile pe timeframe mare)
+        HIST2 = Hist(DATA, fetch_candles, log, os.environ.get("HIST15_SYMS", "GOLD,US100,US500,GBPUSD,USDJPY,US30,UK100").split(","), float(os.environ.get("HIST_YEARS", "10")), tf="15m")     # M15 direct (studiile pe timeframe mare)
         HIST2.start()
+        threading.Thread(target=_spread_poll, daemon=True).start()
     except Exception as e: log("hist init", repr(e))
     def start_duka():
         global DUKA
