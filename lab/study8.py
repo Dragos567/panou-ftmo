@@ -9,7 +9,7 @@ import numpy as np
 from .run import load_m1
 from .data import DT
 
-VER = 1
+VER = 2
 INF = 10 ** 9
 UTC = dt.timezone.utc
 LON, NYZ = ZoneInfo("Europe/London"), ZoneInfo("America/New_York")
@@ -237,7 +237,7 @@ def main():
         for s_ in ("GOLD", "US100"):
             n_ = sum(os.path.getsize(p) // DT.itemsize for p in glob.glob(os.path.join(a.data, "hist", "%s_15m" % s_, "p_*.bin")))
             need[s_] = n_
-        if any(v < int(os.environ.get("S8_MIN15", "150000")) for v in need.values()):                    # < ~6 ani de M15: asteapta descarcarea
+        if need["GOLD"] < int(os.environ.get("S8_MIN15", "150000")) or need["US100"] < int(os.environ.get("S8_MIN15", "150000")) * 2 // 3:                    # < ~6 ani de M15: asteapta descarcarea
             res["state"] = "asteapta"; res["bare_m15"] = need; save(res); return
         try: spd = json.load(open(os.path.join(a.data, "spread.json")))
         except Exception: spd = {}
