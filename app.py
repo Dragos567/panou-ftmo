@@ -724,7 +724,6 @@ if __name__ == "__main__":
         from lab.hist import Hist
         HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI,DAX").split(","), float(os.environ.get("HIST_YEARS", "10")))
         HIST.start()
-        global HIST2
         HIST2 = Hist(DATA, fetch_candles, log, os.environ.get("HIST15_SYMS", "GOLD,US100,US500,GBPUSD,USDJPY").split(","), float(os.environ.get("HIST_YEARS", "10")), tf="15m")     # M15 direct (studiile pe timeframe mare)
         HIST2.start()
     except Exception as e: log("hist init", repr(e))
