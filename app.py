@@ -240,17 +240,35 @@ def sentence_case(t):
     if letters and sum(c.isupper() for c in letters) / len(letters) > 0.6:
         t = t.lower(); t = t[:1].upper() + t[1:]
     return t.strip()
+TRERR = {}
+def _tr_google(t):
+    rq = urllib.request.Request("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ro&dt=t&q=" + urllib.parse.quote(t), headers={"User-Agent": UA})
+    with urllib.request.urlopen(rq, timeout=8) as r: j = json.loads(r.read())
+    return "".join(seg[0] for seg in j[0] if seg and seg[0]).strip()
+def _tr_google2(t):
+    rq = urllib.request.Request("https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=ro&q=" + urllib.parse.quote(t), headers={"User-Agent": UA})
+    with urllib.request.urlopen(rq, timeout=8) as r: j = json.loads(r.read())
+    x = j[0] if isinstance(j, list) else j
+    return (x[0] if isinstance(x, list) else x.get("sentences", [{}])[0].get("trans", "")).strip()
+def _tr_mymemory(t):
+    rq = urllib.request.Request("https://api.mymemory.translated.net/get?langpair=en%7Cro&q=" + urllib.parse.quote(t[:480]), headers={"User-Agent": UA})
+    with urllib.request.urlopen(rq, timeout=8) as r: j = json.loads(r.read())
+    o = (j.get("responseData") or {}).get("translatedText") or ""
+    if "MYMEMORY WARNING" in o.upper(): raise Exception("mymemory limit")
+    return o.strip()
 def translate(text):
     with _trl:
         if text in TR: return TR[text]
-    try:
-        rq = urllib.request.Request("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ro&dt=t&q=" + urllib.parse.quote(sentence_case(text)), headers={"User-Agent": UA})
-        with urllib.request.urlopen(rq, timeout=8) as r: j = json.loads(r.read())
-        out = "".join(seg[0] for seg in j[0] if seg and seg[0]).strip() or text
-    except Exception as e:
-        log("translate", str(e)[:80]); return None
-    with _trl: TR[text] = out
-    return out
+    t = sentence_case(text)
+    for nm, fn in (("google", _tr_google), ("google2", _tr_google2), ("mymemory", _tr_mymemory)):
+        try:
+            out = fn(t)
+            if out:
+                TRERR[nm] = "ok"
+                with _trl: TR[text] = out
+                return out
+        except Exception as e: TRERR[nm] = str(e)[:80]
+    return None
 def par_translate(items):
     res = [None] * len(items); q = list(enumerate(items)); lk = threading.Lock()
     def w():
@@ -510,7 +528,7 @@ class H(BaseHTTPRequestHandler):
                 except Exception: return self.send(404, {"error": "fara jurnal"})
             if u.path == "/api/status":
                 age = round(time.time() - STAT["last_ok"], 1) if STAT["last_ok"] else None
-                return self.send(200, {"agent_age": age, "source": "FTMO/MetaApi"})
+                return self.send(200, {"agent_age": age, "source": "FTMO/MetaApi", "translate": TRERR})
             if u.path == "/api/candles":
                 sym, tf = qs.get("sym", [""])[0], qs.get("tf", [""])[0]
                 if sym not in SYMS or tf not in TFS: return self.send(400, {"error": "parametri invalizi"})
