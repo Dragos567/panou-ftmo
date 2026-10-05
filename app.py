@@ -251,9 +251,16 @@ def translate(text):
     with _trl: TR[text] = out
     return out
 def par_translate(items):
-    res = [None] * len(items)
-    def w(i, it): res[i] = translate(it)
-    ths = [threading.Thread(target=w, args=(i, it)) for i, it in enumerate(items)]
+    res = [None] * len(items); q = list(enumerate(items)); lk = threading.Lock()
+    def w():
+        while True:
+            with lk:
+                if not q: return
+                i, it = q.pop()
+            r = translate(it)
+            if r is None: time.sleep(0.6); r = translate(it)
+            res[i] = r
+    ths = [threading.Thread(target=w) for _ in range(min(6, max(1, len(items))))]
     for t in ths: t.start()
     for t in ths: t.join()
     return res
