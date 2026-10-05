@@ -7,7 +7,7 @@ from .study8 import load_tf, agg
 from .data import DT
 from .study11 import seg_stats, ftmo_block, ASSUMED as ASSUMED_PTS, COMM
 
-VER = 1
+VER = 2
 OLD = ["EURUSD", "GBPUSD", "USDJPY", "GOLD", "US100", "US500", "US30", "UK100", "DAX", "NIKKEI"]
 NEW = ["AUDUSD", "NZDUSD", "USDCAD", "USDCHF", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "SILVER", "COPPER", "PLAT", "PALL", "USOIL", "UKOIL", "NATGAS", "SOY", "WHEAT", "CORN", "SUGAR", "COFFEE", "COCOA", "COTTON",
        "EU50", "FRA40", "AUS200", "HK50", "SPN35", "N25", "US2K", "DXY", "BTC", "ETH"]
@@ -65,9 +65,9 @@ def trend_sleeve(data, spd, syms_ok):
     for j, s in enumerate(syms):
         px = float(np.nanmedian(P[:, j])); cf[s], flag[s] = cost_frac(spd, s, px)
     wk = (days + 3) // 7; reb = np.r_[False, wk[1:] != wk[:-1]]; LB = (60, 120, 250); i0 = 260
-    out = {}
+    out = {}; diag = {}
     for name, lbs in (("trend_60_120_250", LB), ("trend_120_250", (120, 250))):
-        W = np.zeros(len(syms)); net = np.zeros(nd); turn = np.zeros(nd); nact = np.zeros(nd)
+        W = np.zeros(len(syms)); net = np.zeros(nd); turn = np.zeros(nd); nact = np.zeros(nd); gj = np.zeros(len(syms)); cj = np.zeros(len(syms)); nj = np.zeros(len(syms)); big = np.zeros(len(syms))
         for i in range(i0, nd):
             if reb[i]:
                 sg = np.full(len(syms), np.nan)
@@ -78,10 +78,15 @@ def trend_sleeve(data, spd, syms_ok):
                 n_act = int(np.isfinite(sg).sum())
                 for j in range(len(syms)):
                     wn = 0.0 if not np.isfinite(sg[j]) or n_act == 0 else sg[j] * min(4.0, 0.10 / (V[i - 1, j] * np.sqrt(252))) / n_act
-                    net[i] -= abs(wn - W[j]) * cf[syms[j]]; turn[i] += abs(wn - W[j]); W[j] = wn
-            net[i] += float((W * R[i]).sum()); nact[i] = float((W != 0).sum())
+                    net[i] -= abs(wn - W[j]) * cf[syms[j]]; cj[j] += abs(wn - W[j]) * cf[syms[j]]; turn[i] += abs(wn - W[j]); W[j] = wn
+            net[i] += float((W * R[i]).sum()); nact[i] = float((W != 0).sum()); gj += W * R[i]; nj += (W != 0)
+            big += (np.abs(R[i]) > 0.08) & (W != 0)
         out[name] = net
-    return days, out, {"piete": syms, "lipsa": miss, "cost_ipoteza": [s for s in syms if not flag[s]], "n_activ_medie": round(float(nact[i0:].mean()), 1)}
+        if name == "trend_60_120_250":
+            for j, s_ in enumerate(syms):
+                diag[s_] = {"de": time.strftime("%Y-%m", time.gmtime(int(days[np.argmax(act[:, j])]) * 86400)), "zile_poz": int(nj[j]), "brut_an_pct": round(float(gj[j] / (nd - i0) * 252 * 100), 2), "cost_an_pct": round(float(cj[j] / (nd - i0) * 252 * 100), 2),
+                            "cost_rt_bps": round(cf[s_] * 1e4, 1), "cost_masurat": bool(flag[s_]), "zile_mari_8pct": int(big[j])}
+    return days, out, {"per_piata": diag, "piete": syms, "lipsa": miss, "cost_ipoteza": [s for s in syms if not flag[s]], "n_activ_medie": round(float(nact[i0:].mean()), 1)}
 
 
 def sleeves(data, spd, sym, days):
