@@ -15,6 +15,10 @@ PORT = int(os.environ.get("PANOU_PORT", "8080"))
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 SYMS = {"NIKKEI": "JP225.cash", "GOLD": "XAUUSD", "EURUSD": "EURUSD", "USDJPY": "USDJPY", "DAX": "GER40.cash", "GBPUSD": "GBPUSD", "UK100": "UK100.cash"}
+DSYMS = {"AUDUSD": "AUDUSD", "NZDUSD": "NZDUSD", "USDCAD": "USDCAD", "USDCHF": "USDCHF", "EURGBP": "EURGBP", "EURJPY": "EURJPY", "GBPJPY": "GBPJPY", "AUDJPY": "AUDJPY",
+         "SILVER": "XAGUSD", "COPPER": "XCUUSD", "PLAT": "XPTUSD", "PALL": "XPDUSD", "USOIL": "USOIL.cash", "UKOIL": "UKOIL.cash", "NATGAS": "NATGAS.cash",
+         "SOY": "SOYBEAN.c", "WHEAT": "WHEAT.c", "CORN": "CORN.c", "SUGAR": "SUGAR.c", "COFFEE": "COFFEE.c", "COCOA": "COCOA.c", "COTTON": "COTTON.c",
+         "EU50": "EU50.cash", "FRA40": "FRA40.cash", "AUS200": "AUS200.cash", "HK50": "HK50.cash", "SPN35": "SPN35.cash", "N25": "N25.cash", "US2K": "US2000.cash", "DXY": "DXY.cash", "BTC": "BTCUSD", "ETH": "ETHUSD"}   # istoric zilnic pentru portofoliul de trend
 HSYMS = {"US100": "US100.cash", "US500": "US500.cash", "US30": "US30.cash"}      # doar pentru istoric (laborator); nu intra in dashboard / cotatii live
 TFS = ["1m", "5m", "15m", "1h", "4h", "1d"]
 WANT = {"1m": 3000, "5m": 4000, "15m": 4000, "1h": 4000, "4h": 3000, "1d": 2000}
@@ -68,7 +72,7 @@ def iso(t): return t.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 def parse_t(s): return int(dt.datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=dt.timezone.utc).timestamp())
 def fetch_candles(sym, tf, before=None, limit=1000, bulk=False):
     _, mb = bases()
-    u = "%s/users/current/accounts/%s/historical-market-data/symbols/%s/timeframes/%s/candles?limit=%d" % (mb, AID, urllib.parse.quote(SYMS.get(sym) or HSYMS[sym], safe=""), tf, limit)
+    u = "%s/users/current/accounts/%s/historical-market-data/symbols/%s/timeframes/%s/candles?limit=%d" % (mb, AID, urllib.parse.quote(SYMS.get(sym) or HSYMS.get(sym) or DSYMS[sym], safe=""), tf, limit)
     if before: u += "&startTime=" + urllib.parse.quote(iso(dt.datetime.utcfromtimestamp(before)))
     out = []
     for c in http(u, sem=SEM_BULK if bulk else SEM_LIVE) or []:
@@ -478,7 +482,7 @@ class H(BaseHTTPRequestHandler):
                     if q: return self.send(200, http("%s/users/current/accounts/%s/symbols/%s/specification" % (cb, AID, urllib.parse.quote(q, safe="")), tries=2, timeout=20))
                     return self.send(200, http("%s/users/current/accounts/%s/symbols" % (cb, AID), tries=2, timeout=30))
                 except Exception as e: return self.send(200, {"err": repr(e)[:300]})
-            if u.path in ("/api/evt", "/api/evt2", "/api/evt3", "/api/evt4", "/api/evt5", "/api/evt6", "/api/evt7", "/api/evt8", "/api/evt9", "/api/evt10", "/api/evt11"):
+            if u.path in ("/api/evt", "/api/evt2", "/api/evt3", "/api/evt4", "/api/evt5", "/api/evt6", "/api/evt7", "/api/evt8", "/api/evt9", "/api/evt10", "/api/evt11", "/api/evt12"):
                 try: return self.send(200, json.load(open(os.path.join(DATA, u.path.rsplit("/", 1)[1], "result.json"))))
                 except Exception: return self.send(200, {"state": "nu a rulat inca"})
             if u.path == "/api/lab/journal":
@@ -658,7 +662,7 @@ def autopilot():
 
 def evt_once():
     """Studii (lab/eventstudy.py, lab/study2.py): ruleaza o data per versiune, separat de cautare, la prioritate mica."""
-    jobs = [("evt", "lab.eventstudy", "eventstudy.py"), ("evt2", "lab.study2", "study2.py"), ("evt3", "lab.study3", "study3.py"), ("evt4", "lab.classic", "classic.py"), ("evt5", "lab.study5", "study5.py"), ("evt6", "lab.study6", "study6.py"), ("evt7", "lab.study7", "study7.py"), ("evt8", "lab.study8", "study8.py"), ("evt9", "lab.study9", "study9.py"), ("evt10", "lab.study10", "study10.py"), ("evt11", "lab.study11", "study11.py")]
+    jobs = [("evt", "lab.eventstudy", "eventstudy.py"), ("evt2", "lab.study2", "study2.py"), ("evt3", "lab.study3", "study3.py"), ("evt4", "lab.classic", "classic.py"), ("evt5", "lab.study5", "study5.py"), ("evt6", "lab.study6", "study6.py"), ("evt7", "lab.study7", "study7.py"), ("evt8", "lab.study8", "study8.py"), ("evt9", "lab.study9", "study9.py"), ("evt10", "lab.study10", "study10.py"), ("evt11", "lab.study11", "study11.py"), ("evt12", "lab.study12", "study12.py")]
     while True:
         time.sleep(45)
         try:
@@ -687,7 +691,7 @@ def lab_summary(qs):
     p = LABP.get("proc")
     out["auto"] = {"on": bool(cfg.get("on")), "minutes": cfg.get("minutes", 30), "found": cfg.get("found", 0), "running": bool(p and p.poll() is None)}
     out["duka"] = DUKA.status() if DUKA else {}
-    out["hist"] = {k: {"bars": v.get("bars"), "state": v.get("state"), "oldest": v.get("oldest"), "newest": v.get("newest")} for k, v in (list(HIST.status().items() if HIST else []) + [(k + "_15m", v) for k, v in (HIST2.status().items() if HIST2 else [])]) if isinstance(v, dict)}
+    out["hist"] = {k: {"bars": v.get("bars"), "state": v.get("state"), "oldest": v.get("oldest"), "newest": v.get("newest")} for k, v in (list(HIST.status().items() if HIST else []) + [(k + "_15m", v) for k, v in (HIST2.status().items() if HIST2 else [])] + [(k + "_1d", v) for k, v in (HIST3.status().items() if HIST3 else [])]) if isinstance(v, dict)}
     jobs = sorted(d for d in os.listdir(lab) if os.path.isdir(os.path.join(lab, d))) if os.path.isdir(lab) else []
     rows = []; tot = {"tried": 0, "runs": 0, "val": 0, "robust": 0, "cost": 0, "time": 0, "ftmo": 0, "lock": 0, "relevant": 0, "secs": 0, "fin": 0}
     for j in jobs:
@@ -734,8 +738,21 @@ def _spread_poll():
             time.sleep(5)
         time.sleep(10)
 
+def _spread_poll_d():
+    """Spread real pentru simbolurile zilnice (DSYMS): un esantion la ~4 s pe simbol; study12 foloseste media peste ore."""
+    while True:
+        for s in list(DSYMS):
+            try:
+                cb, _ = bases()
+                p = http("%s/users/current/accounts/%s/symbols/%s/current-price" % (cb, AID, urllib.parse.quote(DSYMS[s], safe="")), tries=1, timeout=10)
+                if p and p.get("ask") and p.get("bid") is not None and p["ask"] >= p["bid"]: spread_add(s, p["ask"] - p["bid"])
+            except Exception: pass
+            time.sleep(4)
+        time.sleep(20)
+
 HIST = None
 HIST2 = None
+HIST3 = None
 DUKA = None
 if __name__ == "__main__":
     load_disk()
@@ -745,7 +762,10 @@ if __name__ == "__main__":
         HIST.start()
         HIST2 = Hist(DATA, fetch_candles, log, os.environ.get("HIST15_SYMS", "GOLD,US100,US500,GBPUSD,USDJPY,US30,UK100").split(","), float(os.environ.get("HIST_YEARS", "10")), tf="15m")     # M15 direct (studiile pe timeframe mare)
         HIST2.start()
+        HIST3 = Hist(DATA, fetch_candles, log, os.environ.get("HISTD_SYMS", ",".join(DSYMS)).split(","), float(os.environ.get("HIST_YEARS", "10")), tf="1d")     # zilnic, portofoliu trend
+        HIST3.start()
         threading.Thread(target=_spread_poll, daemon=True).start()
+        threading.Thread(target=_spread_poll_d, daemon=True).start()
     except Exception as e: log("hist init", repr(e))
     def start_duka():
         global DUKA
