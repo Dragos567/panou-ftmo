@@ -244,10 +244,11 @@ def translate(text):
     with _trl:
         if text in TR: return TR[text]
     try:
-        j = get_json("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ro&dt=t&q=" + urllib.parse.quote(sentence_case(text)), 8)
+        rq = urllib.request.Request("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ro&dt=t&q=" + urllib.parse.quote(sentence_case(text)), headers={"User-Agent": UA})
+        with urllib.request.urlopen(rq, timeout=8) as r: j = json.loads(r.read())
         out = "".join(seg[0] for seg in j[0] if seg and seg[0]).strip() or text
-    except Exception:
-        return None
+    except Exception as e:
+        log("translate", str(e)[:80]); return None
     with _trl: TR[text] = out
     return out
 def par_translate(items):
