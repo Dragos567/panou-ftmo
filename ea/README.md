@@ -1,4 +1,6 @@
-# AltrixTrend (MT5) – trend lent cu vol targeting, garduri FTMO
+# AltrixTrend v2.0 (MT5) – trend lent cu vol targeting, garduri FTMO
+
+v2.0: merge pe orice timeframe (recomandat H1), logica din OnTick (live: si din timer), plafon expunere totala `InpMaxTotalLev` (cont 50k, levier 1:30), lista separata `InpTesterSymbols` pentru Strategy Tester.
 
 ## Ce face
 - Portofoliu pe 10 simboluri (EURUSD, GBPUSD, USDJPY, XAUUSD, US100, US500, US30, GER40, UK100, JP225 – numele din MT5 FTMO, editabile).
@@ -16,15 +18,23 @@
 2. Copiaza aici fisierul **AltrixTrend.mq5**.
 3. Deschide-l cu dublu-click (se deschide MetaEditor) si apasa **F7 (Compile)**. In fereastra de jos trebuie sa apara "0 errors". Daca sunt erori, trimite-mi textul lor.
 4. Inapoi in MT5: panoul **Market Watch** (Ctrl+M) > click dreapta > **Symbols**... si verifica ca toate simbolurile din lista exista (nume exact). Daca un nume difera, il schimbi in inputul `InpSymbols`.
-5. Deschide un grafic **EURUSD, D1**. Din **Navigator** (Ctrl+N) > **Expert Advisors** trage **AltrixTrend** pe grafic.
+5. Deschide un grafic **EURUSD, H1**. Din **Navigator** (Ctrl+N) > **Expert Advisors** trage **AltrixTrend** pe grafic.
 6. In fereastra care apare, tab **Common**: bifeaza **Allow Algo Trading**. Tab **Inputs**: pune `InpInitialBalance` = marimea contului (ex. 100000) daca nu pornesti de la balanta initiala; pune `InpTradeEnabled = false` pentru primele zile (mod uscat: doar calculeaza si afiseaza).
 7. Sus in MT5 apasa butonul **Algo Trading** (sa fie verde).
 8. Notificari ntfy (optional): **Tools > Options > Expert Advisors** > bifeaza **Allow WebRequest for listed URL** > adauga `https://ntfy.sh`. In input `InpNtfyTopic` pune topicul tau (acelasi pe care il urmaresti in aplicatia ntfy de pe telefon).
 9. Dupa 1-2 zile in mod uscat, compara in jurnalul din tab **Experts** liniile "rebalansare ... EURUSD:+0.35 ..." cu ce te asteptai, apoi pune `InpTradeEnabled = true`.
 
-## Strategy Tester (backtest in MT5)
-- **View > Strategy Tester**; Expert: AltrixTrend; Symbol: EURUSD; Period: D1; Modelare: **Every tick based on real ticks** (sau 1 minute OHLC); interval 2018-2026; Deposit 100000. Simbolurile suplimentare se incarca automat din istoricul brokerului.
-- Compara cu laboratorul: Sharpe 0 - 0.2 e asteptat. Un rezultat mult mai bun sau mult mai rau inseamna o diferenta de date/cost de investigat.
+## Rulare pe DEMO (recomandat in loc de Strategy Tester pe Mac/Wine)
+1. Deschide graficul EURUSD H1 pe contul demo FTMO. Trage AltrixTrend pe grafic.
+2. Tab **Inputs**: `InpTradeEnabled = false` (mod uscat), `InpInitialBalance = 50000`. Tab **Common**: bifeaza **Allow Algo Trading**.
+3. Jos, tab **Experts**: trebuie sa apara `[AltrixTrend] pornit v2.0: N simboluri (LIVE)...`. In coltul graficului apare starea (equity, DD, pozitii).
+4. Rebalansarea se face la inceputul saptamanii (luni, dupa 2 ore). Linia `rebalansare (...)` arata volumele tinta pe fiecare simbol. Cu `InpTradeEnabled = false` nu se deschide nimic: doar compari cu ce te asteptai.
+5. Dupa 1-2 saptamani: `InpTradeEnabled = true` pe DEMO, urmaresti ordinele reale, spread-ul si swap-ul.
+
+## Strategy Tester (daca functioneaza la tine)
+- **View > Strategy Tester**; Expert: AltrixTrend; Symbol: EURUSD; Period: H1; Modelare: **1 minute OHLC** (tick-urile reale sunt foarte lente, mai ales pe Mac/Wine); interval 2023-2025; Deposit 50000; Levier 1:30.
+- In tester se folosesc doar simbolurile din `InpTesterSymbols` (implicit EURUSD, GBPUSD, USDJPY, XAUUSD).
+- Compara cu laboratorul: Sharpe 0 - 0.2 e asteptat.
 
 ## Parametri importanti
 | Input | Valoare | Rol |
@@ -34,5 +44,7 @@
 | InpMaxDDPct | 8.5 | oprire totala (FTMO: 10%) |
 | InpEmergencySL_ATR | 6 | stop de urgenta; 0 = fara |
 | InpTradeEnabled | true/false | false = mod uscat |
+| InpMaxTotalLev | 12 | plafon expunere totala (suma notional / equity) |
+| InpTesterSymbols | EURUSD,GBPUSD,USDJPY,XAUUSD | simboluri doar in tester |
 
 Dupa un KILL (limita totala sau tinta), EA-ul ramane oprit. Il repornesti stergand variabila globala **ALTRIX_KILL_<cont>**: in MT5 apasa **F3** (Global Variables), selecteaza-o si apasa **Delete**.

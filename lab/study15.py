@@ -12,8 +12,8 @@ from .study12 import daily_series, cost_frac, OLD, NEW, CLS
 from .study11 import seg_stats, ftmo_block
 from .study14 import SW, CRYPTO_DAY
 
-VER = 1
-UA = {"User-Agent": "Mozilla/5.0 (research)"}
+VER = 2
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "text/csv,*/*"}
 COT_MAP = {  # sim: (pattern-uri, semn)  semn=-1 cand piata COT e inversa fata de simbolul CFD (ex. JPY vs USDJPY)
     "EURUSD": (["EURO FX"], 1), "GBPUSD": (["BRITISH POUND"], 1), "USDJPY": (["JAPANESE YEN"], -1), "AUDUSD": (["AUSTRALIAN DOLLAR"], 1), "USDCAD": (["CANADIAN DOLLAR"], -1),
     "GOLD": (["GOLD - COMMODITY"], 1), "SILVER": (["SILVER - COMMODITY"], 1), "COPPER": (["COPPER"], 1), "PLAT": (["PLATINUM"], 1),
@@ -24,10 +24,16 @@ RATE_IDS = {"USD": "USA", "EUR": "EZ", "GBP": "GBR", "JPY": "JPN", "AUD": "AUS",
 PAIRS = {"EURUSD": ("EUR", "USD"), "GBPUSD": ("GBP", "USD"), "USDJPY": ("USD", "JPY"), "AUDUSD": ("AUD", "USD"), "USDCAD": ("USD", "CAD")}
 
 
-def fetch(url, path, minsize=200):
+def fetch(url, path, minsize=200, tries=3, timeout=150):
     if os.path.exists(path) and os.path.getsize(path) > minsize: return open(path, "rb").read()
-    req = urllib.request.Request(url, headers=UA); b = urllib.request.urlopen(req, timeout=60).read()
-    os.makedirs(os.path.dirname(path), exist_ok=True); open(path, "wb").write(b); return b
+    last = None
+    for k in range(tries):
+        try:
+            req = urllib.request.Request(url, headers=UA); b = urllib.request.urlopen(req, timeout=timeout).read()
+            os.makedirs(os.path.dirname(path), exist_ok=True); open(path, "wb").write(b); return b
+        except Exception as e:
+            last = e; time.sleep(3 + 5 * k)
+    raise last
 
 
 def load_cot(ext, log):
@@ -71,7 +77,9 @@ def load_rates(ext, log):
         for pre in ("IR3TIB01", "IRSTCI01"):
             sid = "%s%sM156N" % (pre, cc)
             try:
-                b = fetch("https://fred.stlouisfed.org/graph/fredgraph.csv?id=" + sid, os.path.join(ext, sid + ".csv"), 100).decode()
+                try: b = fetch("https://fred.stlouisfed.org/graph/fredgraph.csv?id=" + sid + "&cosd=2011-01-01", os.path.join(ext, sid + ".csv"), 100).decode()
+                except Exception:
+                    b = fetch("https://fred.stlouisfed.org/data/" + sid + ".csv", os.path.join(ext, sid + ".csv"), 100).decode()
                 ser = {}
                 for ln in b.splitlines()[1:]:
                     p = ln.split(",")
