@@ -656,7 +656,7 @@ class H(BaseHTTPRequestHandler):
                     if q: return self.send(200, http("%s/users/current/accounts/%s/symbols/%s/specification" % (cb, AID, urllib.parse.quote(q, safe="")), tries=2, timeout=20))
                     return self.send(200, http("%s/users/current/accounts/%s/symbols" % (cb, AID), tries=2, timeout=30))
                 except Exception as e: return self.send(200, {"err": repr(e)[:300]})
-            if u.path in ("/api/evt", "/api/evt2", "/api/evt3", "/api/evt4", "/api/evt5", "/api/evt6", "/api/evt7", "/api/evt8", "/api/evt9", "/api/evt10", "/api/evt11", "/api/evt12", "/api/evt13", "/api/evt14", "/api/evt15", "/api/evt16"):
+            if u.path in ("/api/evt", "/api/evt2", "/api/evt3", "/api/evt4", "/api/evt5", "/api/evt6", "/api/evt7", "/api/evt8", "/api/evt9", "/api/evt10", "/api/evt11", "/api/evt12", "/api/evt13", "/api/evt14", "/api/evt15", "/api/evt16", "/api/evt17"):
                 try: return self.send(200, json.load(open(os.path.join(DATA, u.path.rsplit("/", 1)[1], "result.json"))))
                 except Exception: return self.send(200, {"state": "nu a rulat inca"})
             if u.path == "/api/lab/journal":
@@ -856,7 +856,7 @@ def autopilot():
 
 def evt_once():
     """Studii (lab/eventstudy.py, lab/study2.py): ruleaza o data per versiune, separat de cautare, la prioritate mica."""
-    jobs = [("evt", "lab.eventstudy", "eventstudy.py"), ("evt2", "lab.study2", "study2.py"), ("evt3", "lab.study3", "study3.py"), ("evt4", "lab.classic", "classic.py"), ("evt5", "lab.study5", "study5.py"), ("evt6", "lab.study6", "study6.py"), ("evt7", "lab.study7", "study7.py"), ("evt8", "lab.study8", "study8.py"), ("evt9", "lab.study9", "study9.py"), ("evt10", "lab.study10", "study10.py"), ("evt11", "lab.study11", "study11.py"), ("evt12", "lab.study12", "study12.py"), ("evt13", "lab.study13", "study13.py"), ("evt14", "lab.study14", "study14.py"), ("evt15", "lab.study15", "study15.py"), ("evt16", "lab.study16", "study16.py")]
+    jobs = [("evt", "lab.eventstudy", "eventstudy.py"), ("evt2", "lab.study2", "study2.py"), ("evt3", "lab.study3", "study3.py"), ("evt4", "lab.classic", "classic.py"), ("evt5", "lab.study5", "study5.py"), ("evt6", "lab.study6", "study6.py"), ("evt7", "lab.study7", "study7.py"), ("evt8", "lab.study8", "study8.py"), ("evt9", "lab.study9", "study9.py"), ("evt10", "lab.study10", "study10.py"), ("evt11", "lab.study11", "study11.py"), ("evt12", "lab.study12", "study12.py"), ("evt13", "lab.study13", "study13.py"), ("evt14", "lab.study14", "study14.py"), ("evt15", "lab.study15", "study15.py"), ("evt16", "lab.study16", "study16.py"), ("evt17", "lab.study17", "study17.py")]
     while True:
         time.sleep(45)
         try:
@@ -864,7 +864,7 @@ def evt_once():
             for dn, mod, fn in jobs:
                 rp = os.path.join(DATA, "evt" if dn == "evt" else dn, "result.json"); ver = None; st = None; stale = False
                 wait_ = False
-                try: j = json.load(open(rp)); ver = j.get("ver"); st = j.get("state"); stale = time.time() - j.get("started", 0) > 3600 and st == "ruleaza"; wait_ = st == "asteapta" and time.time() - j.get("started", 0) < 600
+                try: j = json.load(open(rp)); ver = j.get("ver"); st = j.get("state"); stale = time.time() - j.get("started", 0) > 14400 and st == "ruleaza"; wait_ = st == "asteapta" and time.time() - j.get("started", 0) < 600
                 except Exception: pass
                 try: want = int(open(os.path.join(HERE, "lab", fn)).read().split("VER = ", 1)[1].split()[0])
                 except Exception: continue
@@ -872,8 +872,12 @@ def evt_once():
                 if ver == want and st in ("gata", "eroare") and not stale: continue
                 if st == "ruleaza" and not stale: continue
                 if not glob.glob(os.path.join(DATA, "hist", "DAX_1m", "p_*.bin")): continue
+                if dn == "evt17":
+                    try: dj = json.load(open(os.path.join(DATA, "databento", "job.json")))
+                    except Exception: continue
+                    if dj.get("active") or not dj.get("finished"): continue
                 os.makedirs(os.path.dirname(rp), exist_ok=True)
-                subprocess.run(["nice", "-n", "15", sys.executable, "-m", mod, "--data", DATA], cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, dn + ".log"), "ab"), stderr=subprocess.STDOUT, timeout=3000)
+                subprocess.run(["nice", "-n", "15", sys.executable, "-m", mod, "--data", DATA], cwd=HERE, env=_lab_env(), stdout=open(os.path.join(DATA, dn + ".log"), "ab"), stderr=subprocess.STDOUT, timeout=14400)
         except Exception as e: log("evt", repr(e))
 
 def lab_summary(qs):
