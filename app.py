@@ -397,7 +397,7 @@ def load_key():
 KEY = load_key()
 LOGIN = """<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Altrix</title>
 <body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#090d12;color:#d6dde7;font:16px system-ui,sans-serif">
-<form style="width:min(92vw,340px)"><h1 style="font-size:20px;margin:0 0 6px">Altrix</h1><p style="color:#7c8a9b;margin:0 0 16px">Acces privat. Introdu codul de acces.</p>
+<form method=post action=/login style="width:min(92vw,340px)"><h1 style="font-size:20px;margin:0 0 6px">Altrix</h1><p style="color:#7c8a9b;margin:0 0 16px">Acces privat. Introdu codul de acces.</p>
 <input name=k type=password autofocus autocomplete=current-password placeholder="Cod de acces" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #1c2530;background:#0f151c;color:inherit;font-size:16px">
 <button style="width:100%;margin-top:10px;padding:12px;border-radius:8px;border:0;background:#e0a93b;color:#15110a;font-weight:600;font-size:16px">Intră</button>@@ERR@@</form></body>"""
 STATIC = ["manifest.webmanifest", "sw.js", "icon-180.png", "icon-192.png", "icon-512.png", "favicon.png"]
@@ -408,31 +408,93 @@ def run_probe():
     env = dict(os.environ, PROBE_OUT=os.path.join(DATA, "report.json"))
     RUN["p"] = subprocess.Popen([sys.executable, os.path.join(HERE, "probe.py")], env=env); return True
 
+# ---------------- securitate ----------------
+SEC_HDR = {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'",
+}
+SESSION_SECRET = hashlib.sha256(("altrix-session|" + KEY + "|" + ADMIN).encode()).digest()
+SESSION_TTL = 30 * 86400
+def make_session():
+    exp = str(int(time.time()) + SESSION_TTL)
+    return exp + "." + hmac.new(SESSION_SECRET, exp.encode(), hashlib.sha256).hexdigest()
+def check_session(v):
+    try:
+        exp, _, sig = v.partition(".")
+        ok = hmac.compare_digest(sig.encode(), hmac.new(SESSION_SECRET, exp.encode(), hashlib.sha256).hexdigest().encode())
+        return ok and int(exp) > time.time()
+    except Exception: return False
+FAILS = collections.defaultdict(list); FLOCK = threading.Lock()
+MAX_FAILS, FAIL_WINDOW, LOCK_SECS = 5, 900, 900
+def client_ip(h):
+    x = h.headers.get("X-Forwarded-For", "")
+    return (x.split(",")[-1].strip() if x else h.client_address[0]) or "?"
+def locked(ip):
+    now = time.time()
+    with FLOCK:
+        FAILS[ip] = [t for t in FAILS[ip] if now - t < FAIL_WINDOW]
+        return len(FAILS[ip]) >= MAX_FAILS
+def note_fail(ip):
+    with FLOCK: FAILS[ip].append(time.time())
+    if len(FAILS[ip]) == MAX_FAILS:
+        try: ntfy("Altrix: blocare", "5 coduri gresite de la " + ip + ". Blocat 15 min.")
+        except Exception: pass
+def cookie_hdr(val, age=SESSION_TTL):
+    return "ps=%s; Max-Age=%d; Path=/; HttpOnly; Secure; SameSite=Lax" % (val, age)
+
 class H(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    timeout = 60
     def log_message(self, *a): pass
     def send(self, code, body, ctype="application/json; charset=utf-8", extra=None):
         if isinstance(body, (dict, list)): body = json.dumps(body).encode("utf-8")
         elif isinstance(body, str): body = body.encode("utf-8")
         self.send_response(code); self.send_header("Content-Type", ctype); self.send_header("Cache-Control", "no-store")
+        for k, v in SEC_HDR.items(): self.send_header(k, v)
         for k, v in (extra or {}).items(): self.send_header(k, v)
         self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
-    def admin(self, qs): return hmac.compare_digest(qs.get("key", [""])[0].encode(), ADMIN.encode())
+    def admin(self, qs):
+        ip = client_ip(self)
+        if locked(ip): return False
+        k = self.headers.get("X-Admin-Key") or qs.get("key", [""])[0]
+        ok = hmac.compare_digest(k.encode(), ADMIN.encode())
+        if not ok: note_fail(ip)
+        return ok
     def authed(self, u, qs):
-        ck = self.headers.get("Cookie", ""); got = ""
+        ip = client_ip(self)
+        ck = self.headers.get("Cookie", ""); ps = leg = ""
         for part in ck.split(";"):
             n, _, v = part.strip().partition("=")
-            if n == "pk": got = urllib.parse.unquote(v)
-        if got and hmac.compare_digest(got.encode(), KEY.encode()): return True
+            if n == "ps": ps = v
+            if n == "pk": leg = urllib.parse.unquote(v)
+        if ps and check_session(ps): return self.csrf_ok(u)
+        if leg and hmac.compare_digest(leg.encode(), KEY.encode()):      # cookie vechi: il inlocuiesc cu sesiune semnata
+            self.send_response(302); self.send_header("Location", u.path)
+            self.send_header("Set-Cookie", cookie_hdr(make_session())); self.send_header("Set-Cookie", "pk=; Max-Age=0; Path=/; HttpOnly; Secure")
+            self.send_header("Content-Length", "0"); self.end_headers(); return False
+        if locked(ip):
+            self.send(429, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Prea multe încercări. Revino peste 15 minute.</p>'), "text/html; charset=utf-8", {"Retry-After": str(LOCK_SECS)}); return False
         k = qs.get("k", [""])[0]
         if k:
             if hmac.compare_digest(k.encode(), KEY.encode()):
                 self.send_response(302); self.send_header("Location", u.path)
-                self.send_header("Set-Cookie", "pk=%s; Max-Age=31536000; Path=/; HttpOnly; Secure; SameSite=Lax" % urllib.parse.quote(KEY))
+                self.send_header("Set-Cookie", cookie_hdr(make_session()))
                 self.send_header("Content-Length", "0"); self.end_headers(); return False
-            time.sleep(1.0); self.send(401, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Cod greșit.</p>'), "text/html; charset=utf-8"); return False
+            note_fail(ip); time.sleep(1.0); self.send(401, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Cod greșit.</p>'), "text/html; charset=utf-8"); return False
         if u.path.startswith("/api/"): self.send(401, {"error": "Acces interzis. Deschide pagina și introdu codul."}); return False
         self.send(401, LOGIN.replace("@@ERR@@", ""), "text/html; charset=utf-8"); return False
+    def csrf_ok(self, u):
+        sf = self.headers.get("Sec-Fetch-Site", "")
+        if u.path.startswith("/api/") and sf == "cross-site":
+            self.send(403, {"error": "cerere dintr-un alt site, blocata"}); return False
+        return True
     def do_GET(self):
         u = urllib.parse.urlparse(self.path); qs = urllib.parse.parse_qs(u.query)
         try:
@@ -545,6 +607,16 @@ class H(BaseHTTPRequestHandler):
             log("GET", u.path, repr(e)); return self.send(502, {"error": "Eroare la citirea datelor FTMO: %s" % e})
     def do_POST(self):
         u = urllib.parse.urlparse(self.path); qs = urllib.parse.parse_qs(u.query)
+        if u.path == "/login":
+            ip = client_ip(self); n = min(int(self.headers.get("Content-Length") or 0), 512)
+            body = urllib.parse.parse_qs(self.rfile.read(n).decode("utf8", "ignore")) if n else {}
+            if locked(ip):
+                return self.send(429, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Prea multe încercări. Revino peste 15 minute.</p>'), "text/html; charset=utf-8", {"Retry-After": str(LOCK_SECS)})
+            k = (body.get("k") or [""])[0]
+            if hmac.compare_digest(k.encode(), KEY.encode()):
+                return self.send(303, b"", "text/plain", {"Location": "/", "Set-Cookie": cookie_hdr(make_session())})
+            note_fail(ip); time.sleep(1.0)
+            return self.send(401, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Cod greșit.</p>'), "text/html; charset=utf-8")
         if not self.admin(qs): return self.send(403, {"error": "cheie"})
         self.send(404, {})
 
