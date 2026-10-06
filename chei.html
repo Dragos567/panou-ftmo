@@ -1,0 +1,25 @@
+<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Altrix · Chei</title>
+<style>body{margin:0;min-height:100vh;background:#090d12;color:#d6dde7;font:16px system-ui,sans-serif;display:grid;place-items:center}
+main{width:min(92vw,460px)}h1{font-size:20px;margin:0 0 4px}p{color:#7c8a9b;margin:6px 0 14px;line-height:1.45}
+input{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #1c2530;background:#0f151c;color:inherit;font-size:16px}
+button{width:100%;margin-top:10px;padding:12px;border-radius:8px;border:0;background:#e0a93b;color:#15110a;font-weight:600;font-size:16px;cursor:pointer}
+button.sec{background:#1c2530;color:#d6dde7}#st{margin-top:14px;font-size:14px;line-height:1.5}.ok{color:#3fc58a}.bad{color:#ef5b6b}a{color:#e0a93b}</style></head>
+<body><main><h1>Cheie Databento</h1>
+<p>Cheia se salvează doar pe serverul nostru, cu acces restricționat. Nu apare în cod, nu se mai afișează după salvare. O poți revoca oricând din contul Databento.</p>
+<input id="k" type="password" autocomplete="off" placeholder="db-..." spellcheck="false">
+<button id="save">Salvează cheia</button><button id="test" class="sec">Testează conexiunea</button>
+<div id="st"></div><p><a href="/">← înapoi la Acasă</a></p></main>
+<script>
+const $=id=>document.getElementById(id),st=$('st');
+function show(h,c){st.className=c||'';st.innerHTML=h}
+async function test(){show('Se verifică…');try{const r=await fetch('/api/ext/databento',{cache:'no-store'});const j=await r.json();
+ if(!j.reach)return show('Serverul nu poate ajunge la Databento ('+(j.err||'')+').','bad');
+ if(!j.key_set)return show('Serverul ajunge la Databento. Nu e salvată nicio cheie încă.','');
+ if(!j.key_ok)return show('Serverul ajunge la Databento, dar cheia e respinsă (cod '+(j.http||'?')+').','bad');
+ show('Conexiune bună. Cheia e validă. Seturi de date vizibile: '+(j.datasets||[]).length+'.','ok')}catch(e){show('Eroare: '+e.message,'bad')}}
+$('test').onclick=test;
+$('save').onclick=async()=>{const k=$('k').value.trim();if(!k)return show('Introdu cheia.','bad');
+ const r=await fetch('/api/ext/databento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k})});
+ const j=await r.json();$('k').value='';if(!r.ok)return show(j.error||'Eroare','bad');show('Cheie salvată. Verific…','ok');test()};
+test();
+</script></body></html>

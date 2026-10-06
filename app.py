@@ -402,7 +402,7 @@ LOGIN = """<!doctype html><meta charset=utf-8><meta name=viewport content="width
 <input name=k type=password autofocus autocomplete=current-password placeholder="Cod de acces" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #1c2530;background:#0f151c;color:inherit;font-size:16px">
 <button style="width:100%;margin-top:10px;padding:12px;border-radius:8px;border:0;background:#e0a93b;color:#15110a;font-weight:600;font-size:16px">Intră</button>@@ERR@@</form></body>"""
 STATIC = ["manifest.webmanifest", "sw.js", "icon-180.png", "icon-192.png", "icon-512.png", "favicon.png"]
-PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html", "/lab": "lab.html"}
+PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html", "/lab": "lab.html", "/chei": "chei.html"}
 RUN = {"p": None}
 def run_probe():
     if RUN["p"] and RUN["p"].poll() is None: return False
@@ -449,6 +449,32 @@ def note_fail(ip):
         except Exception: pass
 def cookie_hdr(val, age=SESSION_TTL):
     return "ps=%s; Max-Age=%d; Path=/; HttpOnly; Secure; SameSite=Lax" % (val, age)
+
+# ---------------- chei externe (Databento): doar pe server, niciodata in repo, niciodata returnate ----------------
+SECDIR = os.path.join(DATA, "secrets")
+def _kpath(name): return os.path.join(SECDIR, name + ".key")
+def key_get(name):
+    try: return open(_kpath(name)).read().strip()
+    except Exception: return ""
+def key_set(name, val):
+    os.makedirs(SECDIR, exist_ok=True)
+    try: os.chmod(SECDIR, 0o700)
+    except Exception: pass
+    fd = os.open(_kpath(name), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f: f.write(val.strip() + "\n")
+def databento_test():
+    """Verifica accesul serverului la Databento si valabilitatea cheii (apel gratuit de metadate)."""
+    k = key_get("databento")
+    out = {"key_set": bool(k)}
+    try:
+        rq = urllib.request.Request("https://hist.databento.com/v0/metadata.list_datasets", headers={"User-Agent": UA, "Authorization": "Basic " + base64.b64encode((k + ":").encode()).decode()})
+        with urllib.request.urlopen(rq, timeout=20) as r: j = json.loads(r.read())
+        out.update(reach=True, key_ok=bool(k), datasets=j if isinstance(j, list) else [])
+    except urllib.error.HTTPError as e:
+        out.update(reach=True, key_ok=False, http=e.code)
+    except Exception as e:
+        out.update(reach=False, err=str(e)[:120])
+    return out
 
 class H(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
@@ -597,6 +623,7 @@ class H(BaseHTTPRequestHandler):
                 if sym not in SYMS or tf not in TFS: return self.send(400, {"error": "parametri invalizi"})
                 return self.send(200, get_candles(sym, tf, qs.get("tail", [""])[0] == "1"))
             if u.path == "/api/build": return self.send(200, {"build": _mtime()})
+            if u.path == "/api/ext/databento": return self.send(200, databento_test())
             if u.path == "/api/quotes": return self.send(200, get_quotes())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
             if u.path == "/api/news":
@@ -618,6 +645,15 @@ class H(BaseHTTPRequestHandler):
                 return self.send(303, b"", "text/plain", {"Location": "/", "Set-Cookie": cookie_hdr(make_session())})
             note_fail(ip); time.sleep(1.0)
             return self.send(401, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Cod greșit.</p>'), "text/html; charset=utf-8")
+        if u.path == "/api/ext/databento":
+            if not self.authed(u, qs): return
+            n = min(int(self.headers.get("Content-Length") or 0), 2048)
+            try: k = (json.loads(self.rfile.read(n).decode("utf8")).get("key") or "").strip()
+            except Exception: k = ""
+            if not (k.startswith("db-") and 20 <= len(k) <= 64 and k.replace("-", "").replace("_", "").isalnum()):
+                return self.send(400, {"error": "cheia nu arata a cheie Databento (incepe cu db-)"})
+            key_set("databento", k)
+            return self.send(200, {"saved": True})
         if not self.admin(qs): return self.send(403, {"error": "cheie"})
         self.send(404, {})
 
