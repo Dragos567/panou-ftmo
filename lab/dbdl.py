@@ -102,7 +102,12 @@ def run(root, key, j):
             for a, b in months(j["start"], j["end"]):
                 f = os.path.join(root, sym, a[:7] + ".npz")
                 if os.path.exists(f): continue
-                c = cost(key, sym, a, b)
+                c = None
+                for att in range(5):
+                    try: c = cost(key, sym, a, b); break
+                    except Exception as e:
+                        j["err"] = "reincerc cost %s %s: %s" % (sym, a[:7], repr(e)[:120]); _save(root, j); time.sleep(10 * (att + 1))
+                if c is None: raise RuntimeError("cost esuat: %s %s" % (sym, a[:7]))
                 if j["spent"] + c > j["cap"]:
                     j.update(active=False, err="plafon atins: %.2f + %.2f > %.2f (oprit la %s %s)" % (j["spent"], c, j["cap"], sym, a)); _save(root, j); return
                 buf = None
