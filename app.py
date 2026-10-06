@@ -494,6 +494,25 @@ def databento_meta(qs):
     except urllib.error.HTTPError as e: return {"http": e.code, "msg": e.read().decode("utf8", "ignore")[:400]}
     except Exception as e: return {"err": str(e)[:200]}
 
+DB_PLAN = [("GC", "GLBX.MDP3", "GC.v.0", "continuous"), ("6E", "GLBX.MDP3", "6E.v.0", "continuous"), ("6B", "GLBX.MDP3", "6B.v.0", "continuous"),
+           ("YM", "GLBX.MDP3", "YM.v.0", "continuous"), ("NKD", "GLBX.MDP3", "NKD.v.0", "continuous"),
+           ("FDAX", "XEUR.EOBI", "FDAX.FUT", "parent"), ("Z", "IFLL.IMPACT", "Z.FUT", "parent")]
+def databento_plan(qs):
+    """Cost si dimensiune (gratuit) pentru toate instrumentele, intr-un singur raspuns."""
+    sch = qs.get("schema", ["trades"])[0]; a = qs.get("start", ["2023-10-06"])[0]; b = qs.get("end", ["2026-10-05"])[0]
+    from concurrent.futures import ThreadPoolExecutor
+    def one(x):
+        nm, ds, sy, st = x; r = {"sym": nm, "dataset": ds}
+        base = {"dataset": ds, "symbols": sy, "stype_in": st, "schema": sch, "start": a, "end": b}
+        c = databento_meta({"m": ["get_cost"], **{k: [v] for k, v in base.items()}})
+        z = databento_meta({"m": ["get_billable_size"], **{k: [v] for k, v in base.items()}})
+        n = databento_meta({"m": ["get_record_count"], **{k: [v] for k, v in base.items()}})
+        r.update(cost_usd=c, billable_bytes=z, records=n)
+        return r
+    with ThreadPoolExecutor(7) as ex: res = list(ex.map(one, DB_PLAN))
+    rng = {ds: databento_meta({"m": ["get_dataset_range"], "dataset": [ds]}) for ds in ("GLBX.MDP3", "XEUR.EOBI", "IFLL.IMPACT")}
+    return {"schema": sch, "start": a, "end": b, "items": res, "ranges": rng}
+
 class H(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     timeout = 60
@@ -641,7 +660,7 @@ class H(BaseHTTPRequestHandler):
                 if sym not in SYMS or tf not in TFS: return self.send(400, {"error": "parametri invalizi"})
                 return self.send(200, get_candles(sym, tf, qs.get("tail", [""])[0] == "1"))
             if u.path == "/api/build": return self.send(200, {"build": _mtime()})
-            if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else databento_test())
+            if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else databento_test()))
             if u.path == "/api/quotes": return self.send(200, get_quotes())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
             if u.path == "/api/news":
