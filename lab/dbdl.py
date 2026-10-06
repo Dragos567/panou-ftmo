@@ -3,7 +3,7 @@
 Fiecare luna se cere intai la 'get_cost' (gratuit); daca suma cheltuita + costul lunii depaseste plafonul, se opreste.
 Rezultat: DATA/databento/<SIMBOL>/<AAAA-LL>.npz cu: t (epoch s), o,h,l,c, v (volum), b (volum cumparator agresor), s (volum vanzator agresor), n (nr tranzactii), iid (id instrument; se schimba la rulare contract).
 """
-import os, json, time, threading, base64, urllib.request, urllib.parse, urllib.error, datetime as dt
+import time, os, json, time, threading, base64, urllib.request, urllib.parse, urllib.error, datetime as dt
 import numpy as np
 
 HOST = "https://hist.databento.com/v0/"
@@ -105,7 +105,12 @@ def run(root, key, j):
                 c = cost(key, sym, a, b)
                 if j["spent"] + c > j["cap"]:
                     j.update(active=False, err="plafon atins: %.2f + %.2f > %.2f (oprit la %s %s)" % (j["spent"], c, j["cap"], sym, a)); _save(root, j); return
-                buf = fetch_month(key, sym, a, b)
+                buf = None
+                for att in range(5):
+                    try: buf = fetch_month(key, sym, a, b); break
+                    except Exception as e:
+                        j["err"] = "reincerc %s %s: %s" % (sym, a[:7], repr(e)[:120]); _save(root, j); time.sleep(10 * (att + 1))
+                if buf is None: raise RuntimeError("esec dupa 5 incercari: %s %s" % (sym, a[:7]))
                 d = to_seconds(parse_dbn(buf))
                 del buf
                 if d is None: d = {k: np.zeros(0) for k in ("t", "o", "h", "l", "c", "v", "b", "s", "n", "iid")}
