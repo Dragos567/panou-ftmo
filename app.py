@@ -513,6 +513,17 @@ def databento_plan(qs):
     rng = {ds: databento_meta({"m": ["get_dataset_range"], "dataset": [ds]}) for ds in ("GLBX.MDP3", "XEUR.EOBI", "IFLL.IMPACT")}
     return {"schema": sch, "start": a, "end": b, "items": res, "ranges": rng}
 
+def databento_dl(qs):
+    from lab import dbdl
+    root = os.path.join(DATA, "databento")
+    act = qs.get("do", [""])[0]
+    if act == "dlstatus": return dbdl.status(root)
+    syms = [x for x in qs.get("syms", ["6E,6B,NKD"])[0].split(",") if x in dbdl.DEFAULT]
+    cap = min(float(qs.get("cap", ["70"])[0]), 100.0)       # plafon dur: 100 USD
+    if not syms: return {"error": "simboluri invalide"}
+    ok = dbdl.start(root, key_get("databento"), syms, qs.get("start", ["2023-10-06"])[0], qs.get("end", ["2026-10-05"])[0], cap)
+    return {"started": ok, "syms": syms, "cap": cap}
+
 class H(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     timeout = 60
@@ -660,7 +671,7 @@ class H(BaseHTTPRequestHandler):
                 if sym not in SYMS or tf not in TFS: return self.send(400, {"error": "parametri invalizi"})
                 return self.send(200, get_candles(sym, tf, qs.get("tail", [""])[0] == "1"))
             if u.path == "/api/build": return self.send(200, {"build": _mtime()})
-            if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else databento_test()))
+            if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else (databento_dl(qs) if qs.get("do", [""])[0] in ("download", "dlstatus") else databento_test())))
             if u.path == "/api/quotes": return self.send(200, get_quotes())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
             if u.path == "/api/news":
@@ -976,6 +987,10 @@ if __name__ == "__main__":
     start_quotes()
     threading.Thread(target=autopilot, daemon=True).start()
     threading.Thread(target=evt_once, daemon=True).start()
+    try:
+        from lab import dbdl as _dbdl
+        _dbdl.resume(os.path.join(DATA, "databento"), key_get("databento"))
+    except Exception as e: log("dbdl resume", repr(e))
     if os.path.exists(CFGP): threading.Thread(target=updater, daemon=True).start()
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), H); srv.daemon_threads = True
     print("Panou FTMO pornit pe", PORT, flush=True)
