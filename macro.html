@@ -645,7 +645,7 @@ window.fetch=function(){const a0=arguments;const u0=String(a0[0]);
   return of.apply(this,a0).then(sv)}
  return of.apply(this,arguments).then(r=>{try{const u=String(arguments[0]);if(u.indexOf('/api/')>=0&&u.indexOf('/api/status')<0){const a=r.headers.get('X-Age');if(r.headers.get('X-Stale')){const m=Math.round((+a||0)/60);stale='Date vechi'+(m>0?' de '+m+' min':'')+' – sursa nu trimite date acum.';show()}}}catch(e){}return r})};
 async function chk(){try{const r=await of('/api/status');if(!r.ok)return;const j=await r.json();
- if(j.agent_age==null||j.agent_age>75){stale='Sursa de date FTMO nu răspunde momentan; vezi ultimele date primite. Serverul reîncearcă singur.';box.className='';box.style.display='block';box.textContent=stale}
+ if(j.agent_age==null||j.agent_age>150){stale='Sursa de date FTMO nu răspunde momentan; vezi ultimele date primite. Serverul reîncearcă singur.';box.className='';box.style.display='block';box.textContent=stale}
  else{stale=0;show()}}catch(e){}}
 setInterval(chk,20000);setTimeout(chk,1500);
 })();

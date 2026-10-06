@@ -201,7 +201,7 @@ def _qone(s):
                 f = _fallback(s)
                 if f:
                     with _ql: _qc["v"][s] = f
-            time.sleep(90 if "429" in str(e) else 2)     # limita MetaApi (credite CPU): rasufla
+            time.sleep(90 if "429" in str(e) else (6 if "504" in str(e) else 2))     # limita MetaApi (credite CPU): rasufla
         # cat timp nu se uita nimeni la pret, intreaba rar (economiseste creditele MetaApi)
         time.sleep(1.0 if time.time() - _QSEEN["t"] < 45 else 20.0)
 _QSEEN = {"t": 0.0}
@@ -869,13 +869,14 @@ if __name__ == "__main__":
     try:
         from lab.hist import Hist
         HIST = Hist(DATA, fetch_candles, log, os.environ.get("HIST_SYMS", "EURUSD,NIKKEI,DAX").split(","), float(os.environ.get("HIST_YEARS", "10")))
-        HIST.start()
         HIST2 = Hist(DATA, fetch_candles, log, os.environ.get("HIST15_SYMS", "GOLD,US100,US500,GBPUSD,USDJPY,US30,UK100").split(","), float(os.environ.get("HIST_YEARS", "10")), tf="15m")     # M15 direct (studiile pe timeframe mare)
-        HIST2.start()
         HIST3 = Hist(DATA, fetch_candles, log, os.environ.get("HISTD_SYMS", ",".join(DSYMS)).split(","), float(os.environ.get("HIST_YEARS", "10")), tf="1d")     # zilnic, portofoliu trend
-        HIST3.start()
-        threading.Thread(target=_spread_poll, daemon=True).start()
-        threading.Thread(target=_spread_poll_d, daemon=True).start()
+        def _late():
+            time.sleep(90)      # preturile live au prioritate la pornire; istoricul si sondajele de spread pornesc dupa
+            HIST.start(); time.sleep(20); HIST2.start(); time.sleep(20); HIST3.start()
+            threading.Thread(target=_spread_poll, daemon=True).start()
+            threading.Thread(target=_spread_poll_d, daemon=True).start()
+        threading.Thread(target=_late, daemon=True).start()
     except Exception as e: log("hist init", repr(e))
     def start_duka():
         global DUKA
@@ -896,6 +897,7 @@ if __name__ == "__main__":
         for i in range(30):
             try: bases(); break
             except Exception: time.sleep(5)
+        time.sleep(90)      # intai preturile live; istoricul greu porneste dupa, ca sa nu sufoce conexiunea MetaApi
         backfill_all()
     threading.Thread(target=boot, daemon=True).start()
     start_quotes()
