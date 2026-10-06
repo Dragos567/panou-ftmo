@@ -476,6 +476,24 @@ def databento_test():
         out.update(reach=False, err=str(e)[:120])
     return out
 
+DB_META = {"get_cost", "get_billable_size", "get_record_count", "list_schemas", "get_dataset_range", "list_unit_prices", "list_publishers", "list_fields"}
+def databento_meta(qs):
+    """Doar apeluri GRATUITE de metadate. timeseries.get_range (care costa bani) nu e permis aici."""
+    k = key_get("databento")
+    if not k: return {"error": "nu e cheie"}
+    m = qs.get("m", [""])[0]
+    hdr = {"User-Agent": UA, "Authorization": "Basic " + base64.b64encode((k + ":").encode()).decode()}
+    par = {a: b[0] for a, b in qs.items() if a not in ("do", "m") and len(b[0]) < 400}
+    try:
+        if m == "resolve":
+            rq = urllib.request.Request("https://hist.databento.com/v0/symbology.resolve", data=urllib.parse.urlencode(par).encode(), headers=hdr)
+        elif m in DB_META:
+            rq = urllib.request.Request("https://hist.databento.com/v0/metadata.%s?%s" % (m, urllib.parse.urlencode(par)), headers=hdr)
+        else: return {"error": "metoda nepermisa"}
+        with urllib.request.urlopen(rq, timeout=40) as r: return json.loads(r.read())
+    except urllib.error.HTTPError as e: return {"http": e.code, "msg": e.read().decode("utf8", "ignore")[:400]}
+    except Exception as e: return {"err": str(e)[:200]}
+
 class H(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     timeout = 60
@@ -623,7 +641,7 @@ class H(BaseHTTPRequestHandler):
                 if sym not in SYMS or tf not in TFS: return self.send(400, {"error": "parametri invalizi"})
                 return self.send(200, get_candles(sym, tf, qs.get("tail", [""])[0] == "1"))
             if u.path == "/api/build": return self.send(200, {"build": _mtime()})
-            if u.path == "/api/ext/databento": return self.send(200, databento_test())
+            if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else databento_test())
             if u.path == "/api/quotes": return self.send(200, get_quotes())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
             if u.path == "/api/news":
