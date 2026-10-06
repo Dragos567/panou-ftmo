@@ -55,6 +55,7 @@ def http(url, tries=4, timeout=70, sem=None):
             else: time.sleep(1 + i)
         except Exception as e:
             last = repr(e); STAT["fails"] += 1; time.sleep(1 + i)
+    STAT["last_err"] = (url.split("/users/current/")[-1][:70] + " -> " + str(last)[:220]); STAT["err_t"] = time.time()
     log("MetaApi eroare:", url.split("/users/current/")[-1][:80], last)
     raise RuntimeError(last)
 
@@ -590,7 +591,7 @@ class H(BaseHTTPRequestHandler):
                 except Exception: return self.send(404, {"error": "fara jurnal"})
             if u.path == "/api/status":
                 age = round(time.time() - STAT["last_ok"], 1) if STAT["last_ok"] else None
-                return self.send(200, {"agent_age": age, "source": "FTMO/MetaApi", "translate": TRERR})
+                return self.send(200, {"agent_age": age, "source": "FTMO/MetaApi", "translate": TRERR, "calls": STAT["calls"], "fails": STAT["fails"], "last_err": STAT.get("last_err"), "err_ago": round(time.time() - STAT["err_t"]) if STAT.get("err_t") else None})
             if u.path == "/api/candles":
                 sym, tf = qs.get("sym", [""])[0], qs.get("tf", [""])[0]
                 if sym not in SYMS or tf not in TFS: return self.send(400, {"error": "parametri invalizi"})
