@@ -11,7 +11,7 @@ REC = np.dtype([("length", "u1"), ("rtype", "u1"), ("pub", "<u2"), ("iid", "<u4"
                 ("action", "S1"), ("side", "S1"), ("flags", "u1"), ("depth", "u1"), ("ts_recv", "<u8"), ("delta", "<i4"), ("seq", "<u4")])
 assert REC.itemsize == 48
 UNDEF = 9223372036854775807
-DEFAULT = {"6E": "6E.v.0", "6B": "6B.v.0", "NKD": "NKD.v.0", "GC": "GC.v.0", "YM": "YM.v.0", "ES": "ES.v.0", "NQ": "NQ.v.0"}
+DEFAULT = {"6E": "6E.v.0", "6B": "6B.v.0", "NKD": "NKD.v.0", "GC": "GC.v.0", "YM": "YM.v.0", "ES": "ES.v.0", "NQ": "NQ.v.0", "6A": "6A.v.0", "6C": "6C.v.0", "6J": "6J.v.0", "6S": "6S.v.0"}
 DATASET = "GLBX.MDP3"
 _LOCK = threading.Lock()
 _T = {"th": None}
