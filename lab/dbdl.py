@@ -72,8 +72,8 @@ def _get(url, key, data=None, timeout=900):
     with urllib.request.urlopen(rq, timeout=timeout) as r: return r.read()
 
 
-def cost(key, sym, a, b):
-    q = urllib.parse.urlencode({"dataset": DATASET, "symbols": DEFAULT[sym], "stype_in": "continuous", "schema": "trades", "start": a, "end": b})
+def cost(key, sym, a, b, schema="trades"):
+    q = urllib.parse.urlencode({"dataset": DATASET, "symbols": DEFAULT[sym], "stype_in": "continuous", "schema": schema, "start": a, "end": b})
     return float(json.loads(_get(HOST + "metadata.get_cost?" + q, key, timeout=60)))
 
 

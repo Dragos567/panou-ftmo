@@ -518,6 +518,13 @@ def databento_dl(qs):
     root = os.path.join(DATA, "databento")
     act = qs.get("do", [""])[0]
     if act == "dlstatus": return dbdl.status(root)
+    if act == "estimate":
+        sch = qs.get("schema", ["mbp-1"])[0]; a0 = qs.get("start", ["2026-08-01"])[0]; b0 = qs.get("end", ["2026-10-01"])[0]; o = {}
+        for sy in qs.get("syms", ["6E,6B,NKD"])[0].split(","):
+            if sy in dbdl.DEFAULT:
+                try: o[sy] = round(dbdl.cost(key_get("databento"), sy, a0, b0, sch), 2)
+                except Exception as e: o[sy] = repr(e)[:120]
+        return {"schema": sch, "start": a0, "end": b0, "cost_usd": o}
     syms = [x for x in qs.get("syms", ["6E,6B,NKD"])[0].split(",") if x in dbdl.DEFAULT]
     cap = min(float(qs.get("cap", ["70"])[0]), 100.0)       # plafon dur: 100 USD
     if not syms: return {"error": "simboluri invalide"}
@@ -671,7 +678,7 @@ class H(BaseHTTPRequestHandler):
                 if sym not in SYMS or tf not in TFS: return self.send(400, {"error": "parametri invalizi"})
                 return self.send(200, get_candles(sym, tf, qs.get("tail", [""])[0] == "1"))
             if u.path == "/api/build": return self.send(200, {"build": _mtime()})
-            if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else (databento_dl(qs) if qs.get("do", [""])[0] in ("download", "dlstatus") else databento_test())))
+            if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else (databento_dl(qs) if qs.get("do", [""])[0] in ("download", "dlstatus", "estimate") else databento_test())))
             if u.path == "/api/quotes": return self.send(200, get_quotes())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
             if u.path == "/api/news":
