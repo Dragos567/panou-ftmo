@@ -732,6 +732,12 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else (databento_dl(qs) if qs.get("do", [""])[0] in ("download", "dlstatus", "estimate", "book", "bookstatus") else databento_test())))
             if u.path == "/api/quotes": return self.send(200, get_quotes())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
+            if u.path == "/api/trdiag":
+                o = {}
+                for nm, fn in (("ms", _tr_ms), ("google", _tr_google), ("google2", _tr_google2), ("mymemory", _tr_mymemory)):
+                    try: o[nm] = fn("Gold rises as dollar weakens")
+                    except Exception as e: o[nm] = "ERR " + repr(e)[:160]
+                return self.send(200, o)
             if u.path == "/api/news":
                 key = qs.get("sym", [""])[0]
                 if key not in NEWS_SYM and key not in NEWS_MULTI: return self.send(400, {"error": "parametri invalizi"})
