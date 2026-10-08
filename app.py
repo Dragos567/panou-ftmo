@@ -273,17 +273,41 @@ def translate(text):
                 return out
         except Exception as e: TRERR[nm] = str(e)[:80]
     return None
+def _batch(items):
+    SEP = "\n"
+    t = SEP.join(sentence_case(x).replace("\n", " ") for x in items)
+    for fn in (_tr_google, _tr_google2):
+        try:
+            out = fn(t)
+            parts = [p.strip() for p in out.split("\n")]
+            if len(parts) == len(items) and all(parts): return parts
+        except Exception as e: TRERR["batch"] = str(e)[:80]
+    return None
 def par_translate(items):
-    res = [None] * len(items); q = list(enumerate(items)); lk = threading.Lock()
+    res = [None] * len(items)
+    todo = []
+    with _trl:
+        for i, it in enumerate(items):
+            if it in TR: res[i] = TR[it]
+            else: todo.append(i)
+    for s in range(0, len(todo), 12):
+        idx = todo[s:s + 12]
+        b = _batch([items[i] for i in idx])
+        if b:
+            TRERR["batch"] = "ok"
+            with _trl:
+                for i, o in zip(idx, b): TR[items[i]] = o; res[i] = o
+    left = [i for i in todo if res[i] is None]
+    q = list(left); lk = threading.Lock()
     def w():
         while True:
             with lk:
                 if not q: return
-                i, it = q.pop()
-            r = translate(it)
-            if r is None: time.sleep(0.6); r = translate(it)
+                i = q.pop()
+            r = translate(items[i])
+            if r is None: time.sleep(0.6); r = translate(items[i])
             res[i] = r
-    ths = [threading.Thread(target=w) for _ in range(min(6, max(1, len(items))))]
+    ths = [threading.Thread(target=w) for _ in range(min(3, max(1, len(left))))]
     for t in ths: t.start()
     for t in ths: t.join()
     return res
