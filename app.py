@@ -253,7 +253,9 @@ def _tr_google2(t):
     rq = urllib.request.Request("https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=ro&q=" + urllib.parse.quote(t), headers={"User-Agent": UA})
     with urllib.request.urlopen(rq, timeout=8) as r: j = json.loads(r.read())
     x = j[0] if isinstance(j, list) else j
-    return (x[0] if isinstance(x, list) else x.get("sentences", [{}])[0].get("trans", "")).strip()
+    if isinstance(x, str): return x.strip()
+    if isinstance(x, list): return (x[0] if x else "").strip()
+    return x.get("sentences", [{}])[0].get("trans", "").strip()
 def _tr_mymemory(t):
     rq = urllib.request.Request("https://api.mymemory.translated.net/get?langpair=en%7Cro&q=" + urllib.parse.quote(t[:480]), headers={"User-Agent": UA})
     with urllib.request.urlopen(rq, timeout=8) as r: j = json.loads(r.read())
@@ -278,7 +280,7 @@ def translate(text):
     with _trl:
         if text in TR: return TR[text]
     t = sentence_case(text)
-    for nm, fn in (("ms", _tr_ms), ("google", _tr_google), ("google2", _tr_google2), ("mymemory", _tr_mymemory)):
+    for nm, fn in (("google2", _tr_google2), ("google", _tr_google), ("ms", _tr_ms), ("mymemory", _tr_mymemory)):
         try:
             out = fn(t)
             if out:
@@ -288,13 +290,9 @@ def translate(text):
         except Exception as e: TRERR[nm] = str(e)[:80]
     return None
 def _batch(items):
-    try:
-        parts = _ms_many([sentence_case(x) for x in items])
-        if len(parts) == len(items) and all(parts): return parts
-    except Exception as e: TRERR["ms"] = str(e)[:80]
     SEP = "\n"
     t = SEP.join(sentence_case(x).replace("\n", " ") for x in items)
-    for fn in (_tr_google, _tr_google2):
+    for fn in (_tr_google2, _tr_google):
         try:
             out = fn(t)
             parts = [p.strip() for p in out.split("\n")]
@@ -734,7 +732,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
             if u.path == "/api/trdiag":
                 o = {}
-                for nm, fn in (("ms", _tr_ms), ("google", _tr_google), ("google2", _tr_google2), ("mymemory", _tr_mymemory)):
+                for nm, fn in (("google2", _tr_google2), ("google", _tr_google), ("ms", _tr_ms), ("mymemory", _tr_mymemory)):
                     try: o[nm] = fn("Gold rises as dollar weakens")
                     except Exception as e: o[nm] = "ERR " + repr(e)[:160]
                 return self.send(200, o)
