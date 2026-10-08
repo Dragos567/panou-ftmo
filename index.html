@@ -640,7 +640,7 @@ async function loadCandles(){
   if(inC)return;inC=true;
   const sym=S.sym,tf=S.tf;
   try{const j=await api(`/api/candles?sym=${sym}&tf=${tf}`);if(sym!==S.sym||tf!==S.tf)return;
-    S.bars=j;S.err=null;S.lastOk=Date.now();recompute()}
+    S.bars=j;S.err=null;S.lastOk=Date.now();recompute();try{liveTick()}catch(e){}}
   catch(e){S.err=e.message}
   inC=false;renderStatus()}
 async function loadQuotes(){if(inQ)return;inQ=true;try{S.quotes=await api('/api/quotes');renderTabs();renderPriceHead();renderFtmoOut()}catch(e){}inQ=false}
@@ -673,7 +673,7 @@ function renderStatus(){
   el.innerHTML=`<span class="dot ${old?'old':''}"></span>${old?'Piață închisă sau date întârziate':'Live'} · ultima lumânare ${tfmt(last)}<br>Actualizat ${new Date(S.lastOk).toLocaleTimeString('ro-RO')} · ${S.bars.source} · ${S.bars.bars.length} lumânări`}
 function renderPriceHead(){
   const I=INSTR[S.sym];$('#phName').textContent=I.label+' · '+I.ftmo;
-  const q=S.quotes[S.sym],b=S.bars;const price=(b&&b.price)||(q&&q.price),prev=(b&&b.prevClose)||(q&&q.prev);
+  const q=S.quotes[S.sym],b=S.bars;const price=(q&&q.price)||(b&&b.price),prev=(q&&q.prev)||(b&&b.prevClose);
   $('#phPrice').textContent=fmt(price);
   const el=$('#phChg');if(price&&prev){const ch=(price/prev-1)*100;el.textContent=(ch>=0?'+':'')+ch.toFixed(2).replace('.',',')+'% azi';el.className='mono '+(ch>=0?'up':'down')}else el.textContent=''}
 
@@ -940,7 +940,7 @@ loadCandles=async function(){
     if(e&&(!S.bars||S.bars.sym!==sym||S.bars.tf!==tf)){S.bars=e.j;S.err=null;S.lastOk=Date.now();recompute()}   // desen instant din cache
     const j=await(e?tailMerge(sym,tf):fullFetch(sym,tf));
     if(sym!==S.sym||tf!==S.tf)return;
-    S.bars=j;S.err=null;S.lastOk=Date.now();recompute();prefetchSoon()
+    S.bars=j;S.err=null;S.lastOk=Date.now();recompute();try{liveTick()}catch(e){}prefetchSoon()
   }catch(err){if(sym===S.sym&&tf===S.tf)S.err=err.message}
   finally{inC=false;renderStatus()}};
 const redraw=()=>{try{(typeof drawCharts==='function'?drawCharts:drawChart)()}catch(e){}};
