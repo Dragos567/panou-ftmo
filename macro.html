@@ -549,13 +549,13 @@ body{max-width:none!important;padding-inline:var(--gut)!important}
 .qs.lag i{background:#ffb340;box-shadow:0 0 0 3px rgba(255,179,64,.2)}.qs.off i{background:#8b95a5;box-shadow:none}.qs.x i{background:#ff6b61;box-shadow:none}
 .tab .qs{margin:0 0 0 6px;font-size:0}.tab .qs i{width:6px;height:6px;box-shadow:none}
 
-.impact{margin-top:10px;padding:11px 13px;border-radius:16px;background:rgba(255,255,255,.045);border:.5px solid var(--line)}
-.impact .ih{font-size:14px;font-weight:600;letter-spacing:.01em;color:var(--muted);margin-bottom:8px}
-.iws{display:flex;flex-wrap:wrap;gap:8px}
-.iw{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:99px;font-size:16px;background:rgba(255,255,255,.06);border:.5px solid var(--line)}
+.impact{margin-top:8px;padding:8px 11px;border-radius:16px;background:rgba(255,255,255,.045);border:.5px solid var(--line)}
+.impact .ih{font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--muted);margin-bottom:8px}
+.iws{display:flex;flex-wrap:wrap;gap:6px}
+.iw{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:13px;background:rgba(255,255,255,.04);border:.5px solid var(--line)}
 .iw.up{background:rgba(48,209,88,.13);color:var(--up);border-color:rgba(48,209,88,.35)}.iw.down{background:rgba(255,69,58,.13);color:var(--down);border-color:rgba(255,69,58,.35)}
-.iw b{font-weight:600;color:var(--text)}.iw .ar{display:inline-flex;align-items:center;gap:0;opacity:.9}.iw .ar svg{display:block;margin:0 -2px}.iw em{font-style:normal;font-size:14.5px;opacity:.9}
-.iwhy{margin-top:8px;font-size:15px;color:var(--muted)}.inote{margin-top:4px;font-size:13px;color:var(--muted);opacity:.75}
+.iw b{font-weight:600;color:var(--text)}.iw .ar{font-size:8px;letter-spacing:-.15em;opacity:.85}.iw em{font-style:normal;font-size:12.5px;opacity:.9}
+.iwhy{margin-top:6px;font-size:13px;color:var(--muted)}.inote{margin-top:3px;font-size:11.5px;color:var(--muted);opacity:.75}
 </style>
 </head>
 <body>
@@ -731,7 +731,7 @@ function headlineImpact(t,whyOut){
   run(/ecb[^.]*(cut|dovish)|euro (falls|slips|weakens|drops)/i,'euro slăbește',()=>add('EUR',-1,'rate'));
   return acc}
 function impactRow(en){const why={},hi=headlineImpact(en,why);const it=IN.filter(k=>hi[k]!==0);if(!it.length)return'';
-  const cell=k=>{const up=hi[k]>0,str=Math.abs(hi[k])>=2?2:1,d=up?'M3 9.5l4-4 4 4':'M3 4.5l4 4 4-4',ch=`<svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;return `<span class="iw ${up?'up':'down'}"><b>${INSTR[k].label}</b><span class="ar">${ch.repeat(str)}</span><em>${up?'ar putea urca':'ar putea scădea'}</em></span>`};
+  const cell=k=>{const up=hi[k]>0,str=Math.abs(hi[k])>=2?2:1,ar=up?'▲':'▼';return `<span class="iw ${up?'up':'down'}"><b>${INSTR[k].label}</b><span class="ar">${ar.repeat(str)}</span><em>${up?'ar putea urca':'ar putea scădea'}</em></span>`};
   const reasons=[...new Set(it.flatMap(k=>why[k]||[]))].slice(0,2).join(' · ');
   return `<div class="impact"><div class="ih">Cum ar putea influența piața</div><div class="iws">${it.map(cell).join('')}</div>${reasons?`<div class="iwhy">Motiv: ${esc(reasons)}</div>`:''}<div class="inote">Estimare automată din titlu, nu certitudine.</div></div>`}
 const NEWS_TABS=[['ALL','Toate'],['MACRO','Macro'],['GOLD','Aur'],['EURUSD','EUR/USD'],['USDJPY','USD/JPY'],['DAX','DAX'],['NIKKEI','Nikkei'],['GBPUSD','GBP/USD'],['UK100','UK100']];
