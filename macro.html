@@ -538,6 +538,11 @@ td,th{font-size:15.5px}
 .tabbar a{font-size:12.5px!important}
 .brand small{font-size:12.5px}
 @media (max-width:760px){body{font-size:17px}.nitem a{font-size:18.5px}}
+/* pagina pe toata latimea */
+:root{--gut:clamp(16px,2vw,36px)}
+@media (max-width:760px){:root{--gut:12px}}
+body{max-width:none!important;padding-inline:var(--gut)!important}
+.top{margin-inline:calc(-1*var(--gut))!important;padding-inline:var(--gut)!important}
 </style>
 </head>
 <body>
