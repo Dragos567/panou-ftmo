@@ -416,6 +416,11 @@ body{max-width:none!important;padding-inline:var(--gut)!important}
 @media (min-width:901px){.grid{grid-template-columns:minmax(0,1fr) clamp(420px,36vw,720px);gap:16px}}
 @media (min-width:901px) and (max-width:1100px){.grid{grid-template-columns:minmax(0,1fr) 380px}}
 .grid>.stack{position:static;max-height:none;overflow:visible}
+
+.qs{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;margin-top:6px;color:var(--muted)}
+.qs i{width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 0 3px rgba(48,209,88,.18)}
+.qs.lag i{background:#ffb340;box-shadow:0 0 0 3px rgba(255,179,64,.2)}.qs.off i{background:#8b95a5;box-shadow:none}.qs.x i{background:#ff6b61;box-shadow:none}
+.tab .qs{margin:0 0 0 6px;font-size:0}.tab .qs i{width:6px;height:6px;box-shadow:none}
 </style>
 </head>
 <body>
@@ -654,8 +659,11 @@ function recompute(){
 function renderTabs(){
   $('#symTabs').innerHTML=SYMS.map(s=>{const q=S.quotes[s],I=INSTR[s];let p='–',c='',cl='';
     if(q&&q.price){p=fmt(q.price,I.dec);if(q.prev){const ch=(q.price/q.prev-1)*100;c=(ch>=0?'+':'')+ch.toFixed(2).replace('.',',')+'%';cl=ch>=0?'up':'down'}}
-    return `<button class="tab" type="button" data-sym="${s}" aria-pressed="${s===S.sym}"><span class="n">${I.label}</span><span class="p">${p}<i class="${cl}">${c}</i></span></button>`}).join('');
+    return `<button class="tab" type="button" data-sym="${s}" aria-pressed="${s===S.sym}"><span class="n">${I.label}</span><span class="p">${p}<i class="${cl}">${c}</i><span class="qs ${qState(q).c}" title="${qState(q).t}"><i></i></span></span></button>`}).join('');
   $('#tfTabs').innerHTML=TFS.map(t=>`<button class="tab tf" type="button" data-tf="${t}" aria-pressed="${t===S.tf}">${t==='1d'?'Zi':t}</button>`).join('')}
+function qState(q){if(!q||!q.price)return{c:'x',t:'fără date'};const now=Date.now()/1000;const age=q.qt?now-q.qt:(q.ok?now-q.ok:null);
+  if(age==null)return{c:'ok',t:'live'};if(age<=90)return{c:'ok',t:'live'};if(age<=600)return{c:'lag',t:'întârziat '+Math.round(age/60)+' min'};
+  const d=new Date((q.qt||q.ok)*1000);return{c:'off',t:'piață închisă · '+d.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})}}
 function renderStatus(){
   const el=$('#status');
   if(S.err){el.innerHTML=`<span class="dot bad"></span>Fără conexiune la date<br><span style="color:var(--down)">${S.err}</span>`;return}

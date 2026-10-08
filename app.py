@@ -194,14 +194,17 @@ def _qone(s):
             p = http("%s/users/current/accounts/%s/symbols/%s/current-price" % (cb, AID, urllib.parse.quote(SYMS[s], safe="")), tries=1, timeout=10)
             with SLOCK: h = STORE.get((s, "1h")) or STORE.get((s, "15m")) or STORE.get((s, "5m"))
             prev = prev_24h(h) if h else (_qc["v"].get(s) or {}).get("prev")
-            with _ql: _qc["v"][s] = {"price": p["bid"], "prev": prev}; _qc["t"] = time.time()
+            try: qt = parse_t(p["time"]) if p.get("time") else None
+            except Exception: qt = None
+            with _ql: _qc["v"][s] = {"price": p["bid"], "prev": prev, "qt": qt, "ok": time.time()}; _qc["t"] = time.time()
             if p.get("ask") and p["ask"] >= p["bid"]: spread_add(s, p["ask"] - p["bid"])
         except Exception as e:
             if s not in _qc["v"]:
                 f = _fallback(s)
                 if f:
                     with _ql: _qc["v"][s] = f
-            time.sleep(90 if "429" in str(e) else (6 if "504" in str(e) else 2))     # limita MetaApi (credite CPU): rasufla
+            STAT.setdefault("qerr", {})[s] = (time.strftime("%H:%M:%S ") + str(e)[:90])
+            time.sleep(20 if "429" in str(e) else (6 if "504" in str(e) else 2))     # limita MetaApi (credite CPU): rasufla
         # cat timp nu se uita nimeni la pret, intreaba rar (economiseste creditele MetaApi)
         time.sleep(1.0 if time.time() - _QSEEN["t"] < 45 else 20.0)
 _QSEEN = {"t": 0.0}

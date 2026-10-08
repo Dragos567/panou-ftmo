@@ -543,6 +543,11 @@ td,th{font-size:15.5px}
 @media (max-width:760px){:root{--gut:12px}}
 body{max-width:none!important;padding-inline:var(--gut)!important}
 .top{margin-inline:calc(-1*var(--gut))!important;padding-inline:var(--gut)!important}
+
+.qs{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;margin-top:6px;color:var(--muted)}
+.qs i{width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 0 3px rgba(48,209,88,.18)}
+.qs.lag i{background:#ffb340;box-shadow:0 0 0 3px rgba(255,179,64,.2)}.qs.off i{background:#8b95a5;box-shadow:none}.qs.x i{background:#ff6b61;box-shadow:none}
+.tab .qs{margin:0 0 0 6px;font-size:0}.tab .qs i{width:6px;height:6px;box-shadow:none}
 </style>
 </head>
 <body>
@@ -744,10 +749,13 @@ function renderHero(){
 function cd2(ts){const s=Math.round(ts-Date.now()/1000);if(s<=-60)return 'publicat';if(s<=0)return 'ACUM';const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h>0?`${h}:${p2(m)}:${p2(x)}`:`${p2(m)}:${p2(x)}`}
 
 /* ---------- prețuri, banner, status ---------- */
+function qState(q){if(!q||!q.price)return{c:'x',t:'fără date'};const now=Date.now()/1000;const age=q.qt?now-q.qt:(q.ok?now-q.ok:null);
+  if(age==null)return{c:'ok',t:'live'};if(age<=90)return{c:'ok',t:'live'};if(age<=600)return{c:'lag',t:'întârziat '+Math.round(age/60)+' min'};
+  const d=new Date((q.qt||q.ok)*1000);return{c:'off',t:'piață închisă · '+d.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})}}
 function renderStrip(){
   $('#strip').innerHTML=IN.map(k=>{const q=S.quotes[k],I=INSTR[k];let p='–',c='',cl='',ar='';
     if(q&&q.price){p=fmt(q.price,I.dec);if(q.prev){const ch=(q.price/q.prev-1)*100;c=(ch>=0?'+':'')+ch.toFixed(2).replace('.',',')+'%';cl=ch>=0?'up':'down';ar=ch>=0?'▲':'▼'}}
-    return `<div class="kpi ${cl}"><div class="k"><span>${I.label}</span><em>${I.sh}</em></div><div class="v">${p}</div>${c?`<span class="chg ${cl}">${ar} ${c}</span>`:'<span class="chg">&nbsp;</span>'}</div>`}).join('')}
+    const st=qState(q);return `<div class="kpi ${cl}"><div class="k"><span>${I.label}</span><em>${I.sh}</em></div><div class="v">${p}</div>${c?`<span class="chg ${cl}">${ar} ${c}</span>`:'<span class="chg">&nbsp;</span>'}<div class="qs ${st.c}"><i></i>${st.t}</div></div>`}).join('')}
 function renderEv(){
   const now=Date.now()/1000,e=S.cal.find(e=>e.importance>=1&&CURS.includes(e.currency)&&e.ts-now<=1800&&e.ts-now>=-900);
   $('#evBanner').innerHTML=e?`<div class="ev">⚠ Știre de impact (${esc(e.currency)}): ${esc(e.title)} ${cd(e.ts)}. Volatilitate mare probabilă pe ${IN.filter(k=>impactOf(e,1)[k].d).map(k=>INSTR[k].label).join(', ')||'instrumentele tale'}.</div>`:''}
