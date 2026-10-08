@@ -333,6 +333,63 @@ body{padding-top:0}
 @media (max-width:1100px){.ftmo2{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:640px){.form3{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 </style><!--/SHELL-CSS-->
+<style id="altrix-v2">
+/* ===== Altrix v2: stil Apple (accent albastru, suprafete plate, apasare instant) ===== */
+:root{
+  --bg:#0a0c10;--bg2:#0d1015;--panel:#12151b;--panel2:#0a0c10;--line:rgba(255,255,255,.075);--line2:rgba(255,255,255,.14);
+  --text:#e8ecf2;--muted:#8b95a5;--up:#30d158;--down:#ff453a;--warn:#ffd60a;--accent:#0a84ff;--tabon:rgba(10,132,255,.14);
+  --glow:none;--r:16px;--r2:12px;--shadow:none;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+:root[data-theme="light"]{
+  --bg:#f5f5f7;--bg2:#ececf0;--panel:#ffffff;--panel2:#f5f5f7;--line:rgba(0,0,0,.08);--line2:rgba(0,0,0,.16);
+  --text:#1d1d1f;--muted:#6e6e73;--up:#1f9d3f;--down:#d70015;--warn:#b25000;--accent:#0071e3;--tabon:rgba(0,113,227,.10);--shadow:none;--glow:none;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);letter-spacing:-.003em;text-rendering:optimizeLegibility}
+.num,.mono,.kpi .v,.phead .big,td.mono{font-variant-numeric:tabular-nums}
+::selection{background:color-mix(in srgb,var(--accent) 35%,transparent)}
+/* bara de sus: sticla translucida, fara linie dura */
+.top{background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:saturate(1.8) blur(22px);-webkit-backdrop-filter:saturate(1.8) blur(22px);border-bottom:.5px solid var(--line)}
+.brand{font-weight:600;letter-spacing:-.02em}
+.brand::before{border-radius:9px;background:var(--accent);box-shadow:none;background-image:none;content:"A";display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:17px}
+/* navigare: control segmentat */
+.nav{background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+.nav a{border-radius:9px;padding:6px 13px;transition:background .2s var(--ease),color .2s var(--ease)}
+.nav a[aria-current]{background:color-mix(in srgb,var(--text) 14%,var(--panel));box-shadow:none;color:var(--text)}
+.nav a[aria-current]::after{display:none}
+.status{border:.5px solid var(--line);background:transparent}
+.dot{animation:none}
+/* carduri plate */
+.card,.kpi{background:var(--panel);border:.5px solid var(--line);border-radius:16px;box-shadow:none}
+:root[data-theme="light"] .card{background:var(--panel)}
+.card h2{font-size:12px;letter-spacing:.02em;text-transform:none;font-weight:500;color:var(--muted)}
+.card h2::before{display:none}
+.stack,.grid{gap:14px}
+.strip .kpi::before{display:none}
+.strip .kpi .v{font-weight:600;letter-spacing:-.02em}
+/* butoane si taburi: raspuns instant la apasare */
+.tab,.btn,.ctl button,.mini,.tool{transition:transform .12s var(--ease),background .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease);border-radius:12px;touch-action:manipulation}
+.tab:active,.btn:active,.ctl button:active,.mini:active,.tool:active{transform:scale(.97)}
+.tab[aria-pressed="true"]{border-color:var(--accent);background:var(--tabon);box-shadow:none}
+.tf{border-radius:10px}
+.btn.pri{background:var(--accent);color:#fff;border-color:transparent;box-shadow:none}
+.btn.pri:hover{filter:brightness(1.1)}
+.form input:focus,.form select:focus,.ctl input:focus,.ctl select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+input[type=checkbox]{accent-color:var(--accent)}
+.verdict{border-radius:14px}
+.stat div{border-radius:12px}
+.phead .big{font-weight:600;letter-spacing:-.03em}
+.phead .nm{letter-spacing:-.01em}
+.nl a:hover{color:var(--accent)}
+details{border-radius:14px}
+.meter i{box-shadow:0 0 0 2px var(--panel)}
+@media (max-width:760px){
+  .tabbar a[aria-current]{background:var(--tabon);color:var(--accent)}
+  .tabbar{border-top:.5px solid var(--line)}
+}
+@media (prefers-reduced-transparency:reduce){.top,.tabbar{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
 <body>
 <!--SHELL-BODY--><div id="offline" role="status"></div>
