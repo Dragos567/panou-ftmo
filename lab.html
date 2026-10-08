@@ -122,6 +122,24 @@ table td,table th{border-bottom-color:var(--line)}
 .grid>*,.stack>*,.strip{animation:v3in .45s var(--ease) both}
 @media (prefers-reduced-transparency:reduce){.top,.tabbar{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* iconite instrumente */
+.ii{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:10px;color:#fff;font:700 13px/1 var(--font);letter-spacing:-.02em;vertical-align:middle;box-shadow:0 5px 12px -5px rgba(0,0,0,.6),inset 0 .5px 0 rgba(255,255,255,.35)}
+.ii.au{background:linear-gradient(145deg,#ffe08a,#d9a02c);color:#3a2705}
+.ii.eu{background:linear-gradient(145deg,#6aa8ff,#2f5fe0);font-size:16px}
+.ii.jp{background:linear-gradient(145deg,#ff8a96,#cf2f45);font-size:16px}
+.ii.de{background:linear-gradient(170deg,#1b1b1f 0 34%,#e0393e 34% 67%,#f7c948 67%);text-shadow:0 1px 3px rgba(0,0,0,.6);font-size:11px}
+.ii.nk{background:#fff radial-gradient(circle at 50% 50%,#d6213a 0 31%,transparent 33%)}
+.ii.gb{background:linear-gradient(145deg,#c39bff,#6a3de0);font-size:16px}
+.ii.uk{background:linear-gradient(145deg,#4a6cb8,#1a2a55);font-size:11px}
+.tab[data-sym],.tab:has(>.ii){display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;text-align:left}
+.tab>.ii{grid-row:1/3;width:34px;height:34px}
+.kpi .k>span>.ii{width:24px;height:24px;border-radius:8px;font-size:11px;margin-right:8px}
+.kpi .k>span{display:inline-flex;align-items:center}
+.phead .nm>.ii,#phName>.ii{width:38px;height:38px;border-radius:12px;margin-right:12px}
+.brow .nm>.ii{width:28px;height:28px;border-radius:9px;margin-right:10px;font-size:12px}
+.brow .nm{display:flex;align-items:center;flex-wrap:wrap}
+.brow .nm .sh{flex-basis:100%;padding-left:38px;margin-top:-4px}
+.card h2{display:flex;align-items:center;gap:8px}
 </style>
 </head><body>
 <nav class="tabbar"><a href="/"><b>◧</b>Acasă</a><a href="/ma"><b>≈</b>MA · RSI</a><a href="/fvg"><b>◈</b>FVG · MSS</a><a href="/lab" class="on"><b>⚗</b>Laborator</a></nav>
@@ -220,6 +238,23 @@ function run(){document.querySelectorAll('.nav a,.tabbar a').forEach(function(a)
  var b=a.querySelector('b');if(b)b.remove();
  a.insertAdjacentHTML('afterbegin','<span class="v3i" aria-hidden="true" style="--c1:'+m[1]+';--c2:'+m[2]+'"><svg viewBox="0 0 24 24"><path d="'+m[0]+'"/></svg></span>');});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
+})();
+(function(){
+var G={au:'Au',eu:'€',jp:'¥',de:'DE',nk:'',gb:'£',uk:'UK'};
+function kind(t){t=(t||'').toLowerCase();
+ if(/aur|xau|gold/.test(t))return'au';if(/eur\/?usd/.test(t))return'eu';if(/usd\/?jpy/.test(t))return'jp';
+ if(/dax|ger40/.test(t))return'de';if(/nikkei|n225|jp225/.test(t))return'nk';if(/gbp\/?usd/.test(t))return'gb';if(/uk100|ftse/.test(t))return'uk';return''}
+function mk(k){var s=document.createElement('span');s.className='ii '+k;s.setAttribute('aria-hidden','true');s.textContent=G[k];return s}
+function addTo(host,labelEl,target){if(!host||host.querySelector(':scope>.ii,:scope>span>.ii'))return;
+ var k=kind(labelEl.textContent);if(!k)return;target.insertBefore(mk(k),target.firstChild)}
+var q=0;function run(){q=0;
+ document.querySelectorAll('.tab[data-sym]').forEach(function(t){var n=t.querySelector('.n');if(n&&!t.querySelector(':scope>.ii')){var k=kind(n.textContent);if(k)t.insertBefore(mk(k),t.firstChild)}});
+ document.querySelectorAll('.kpi .k>span:first-child').forEach(function(s){if(!s.querySelector('.ii')){var k=kind(s.textContent);if(k)s.insertBefore(mk(k),s.firstChild)}});
+ document.querySelectorAll('.brow .nm').forEach(function(s){if(!s.querySelector(':scope>.ii')){var k=kind(s.firstChild&&s.firstChild.textContent);if(k)s.insertBefore(mk(k),s.firstChild)}});
+ document.querySelectorAll('#phName').forEach(function(s){if(!s.querySelector(':scope>.ii')){var k=kind(s.textContent);if(k)s.insertBefore(mk(k),s.firstChild)}});}
+function sched(){if(!q){q=1;requestAnimationFrame(run)}}
+function start(){run();new MutationObserver(sched).observe(document.body,{childList:true,subtree:true})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
 </body></html>
