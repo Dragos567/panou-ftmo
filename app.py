@@ -260,11 +260,25 @@ def _tr_mymemory(t):
     o = (j.get("responseData") or {}).get("translatedText") or ""
     if "MYMEMORY WARNING" in o.upper(): raise Exception("mymemory limit")
     return o.strip()
+_MSTOK = {"t": 0, "v": ""}
+def _ms_token():
+    if time.time() - _MSTOK["t"] > 480:
+        rq = urllib.request.Request("https://edge.microsoft.com/translate/auth", headers={"User-Agent": UA})
+        with urllib.request.urlopen(rq, timeout=8) as r: _MSTOK["v"] = r.read().decode().strip()
+        _MSTOK["t"] = time.time()
+    return _MSTOK["v"]
+def _ms_many(lst):
+    body = json.dumps([{"Text": x} for x in lst]).encode()
+    rq = urllib.request.Request("https://api-edge.cognitive.microsofttranslator.com/translate?from=en&to=ro&api-version=3.0", data=body,
+        headers={"User-Agent": UA, "Content-Type": "application/json", "Authorization": "Bearer " + _ms_token()})
+    with urllib.request.urlopen(rq, timeout=10) as r: j = json.loads(r.read())
+    return [(x["translations"][0]["text"] or "").strip() for x in j]
+def _tr_ms(t): return _ms_many([t])[0]
 def translate(text):
     with _trl:
         if text in TR: return TR[text]
     t = sentence_case(text)
-    for nm, fn in (("google", _tr_google), ("google2", _tr_google2), ("mymemory", _tr_mymemory)):
+    for nm, fn in (("ms", _tr_ms), ("google", _tr_google), ("google2", _tr_google2), ("mymemory", _tr_mymemory)):
         try:
             out = fn(t)
             if out:
@@ -274,6 +288,10 @@ def translate(text):
         except Exception as e: TRERR[nm] = str(e)[:80]
     return None
 def _batch(items):
+    try:
+        parts = _ms_many([sentence_case(x) for x in items])
+        if len(parts) == len(items) and all(parts): return parts
+    except Exception as e: TRERR["ms"] = str(e)[:80]
     SEP = "\n"
     t = SEP.join(sentence_case(x).replace("\n", " ") for x in items)
     for fn in (_tr_google, _tr_google2):
