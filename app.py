@@ -476,19 +476,30 @@ def check_session(v):
         return ok and int(exp) > time.time()
     except Exception: return False
 FAILS = collections.defaultdict(list); FLOCK = threading.Lock()
-MAX_FAILS, FAIL_WINDOW, LOCK_SECS = 5, 900, 900
+LOCKUNTIL, STRIKES = {}, collections.defaultdict(int)
+MAX_FAILS, FAIL_WINDOW = 3, 900
+LOCK_STEPS = [900, 3600, 21600, 86400, 604800]      # 15 min, 1 h, 6 h, 24 h, 7 zile (creste la fiecare blocare repetata)
+LOCK_SECS = 900
 def client_ip(h):
     x = h.headers.get("X-Forwarded-For", "")
     return (x.split(",")[-1].strip() if x else h.client_address[0]) or "?"
 def locked(ip):
-    now = time.time()
-    with FLOCK:
-        FAILS[ip] = [t for t in FAILS[ip] if now - t < FAIL_WINDOW]
-        return len(FAILS[ip]) >= MAX_FAILS
+    with FLOCK: return time.time() < LOCKUNTIL.get(ip, 0)
+def lock_left(ip):
+    with FLOCK: return max(1, int(LOCKUNTIL.get(ip, 0) - time.time()))
+def _fmt_dur(s):
+    return "%d min" % (s // 60) if s < 7200 else ("%d ore" % (s // 3600) if s < 172800 else "%d zile" % (s // 86400))
 def note_fail(ip):
-    with FLOCK: FAILS[ip].append(time.time())
-    if len(FAILS[ip]) == MAX_FAILS:
-        try: ntfy("Altrix: blocare", "5 coduri gresite de la " + ip + ". Blocat 15 min.")
+    now = time.time(); msg = None
+    with FLOCK:
+        if now < LOCKUNTIL.get(ip, 0): return
+        FAILS[ip] = [t for t in FAILS[ip] if now - t < FAIL_WINDOW] + [now]
+        if len(FAILS[ip]) >= MAX_FAILS:
+            d = LOCK_STEPS[min(STRIKES[ip], len(LOCK_STEPS) - 1)]; STRIKES[ip] += 1
+            LOCKUNTIL[ip] = now + d; FAILS[ip] = []
+            msg = "%d coduri gresite de la %s. Blocat %s (blocarea nr. %d)." % (MAX_FAILS, ip, _fmt_dur(d), STRIKES[ip])
+    if msg:
+        try: ntfy("Altrix: blocare", msg)
         except Exception: pass
 def cookie_hdr(val, age=SESSION_TTL):
     return "ps=%s; Max-Age=%d; Path=/; HttpOnly; Secure; SameSite=Lax" % (val, age)
@@ -611,7 +622,7 @@ class H(BaseHTTPRequestHandler):
             self.send_header("Set-Cookie", cookie_hdr(make_session())); self.send_header("Set-Cookie", "pk=; Max-Age=0; Path=/; HttpOnly; Secure")
             self.send_header("Content-Length", "0"); self.end_headers(); return False
         if locked(ip):
-            self.send(429, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Prea multe încercări. Revino peste 15 minute.</p>'), "text/html; charset=utf-8", {"Retry-After": str(LOCK_SECS)}); return False
+            self.send(429, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Prea multe încercări. Accesul este blocat temporar.</p>'), "text/html; charset=utf-8", {"Retry-After": str(lock_left(ip))}); return False
         k = qs.get("k", [""])[0]
         if k:
             if hmac.compare_digest(k.encode(), KEY.encode()):
@@ -749,7 +760,7 @@ class H(BaseHTTPRequestHandler):
             ip = client_ip(self); n = min(int(self.headers.get("Content-Length") or 0), 512)
             body = urllib.parse.parse_qs(self.rfile.read(n).decode("utf8", "ignore")) if n else {}
             if locked(ip):
-                return self.send(429, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Prea multe încercări. Revino peste 15 minute.</p>'), "text/html; charset=utf-8", {"Retry-After": str(LOCK_SECS)})
+                return self.send(429, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Prea multe încercări. Accesul este blocat temporar.</p>'), "text/html; charset=utf-8", {"Retry-After": str(lock_left(ip))})
             k = (body.get("k") or [""])[0]
             if hmac.compare_digest(k.encode(), KEY.encode()):
                 return self.send(303, b"", "text/plain", {"Location": "/", "Set-Cookie": cookie_hdr(make_session())})
