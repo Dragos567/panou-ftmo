@@ -1,0 +1,34 @@
+<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Altrix · Cont FTMO</title>
+<style>body{margin:0;min-height:100vh;background:#090d12;color:#d6dde7;font:16px system-ui,sans-serif;display:grid;place-items:center}
+main{width:min(92vw,460px);padding:20px 0}h1{font-size:20px;margin:0 0 4px}p{color:#7c8a9b;margin:6px 0 14px;line-height:1.45}
+label{display:block;font-size:13px;color:#7c8a9b;margin:12px 0 4px}
+input{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #1c2530;background:#0f151c;color:inherit;font-size:16px}
+button{width:100%;margin-top:16px;padding:12px;border-radius:8px;border:0;background:#e0a93b;color:#15110a;font-weight:600;font-size:16px;cursor:pointer}
+button:disabled{opacity:.5}#st{margin-top:14px;font-size:14px;line-height:1.5}.ok{color:#3fc58a}.bad{color:#ef5b6b}a{color:#e0a93b}.cur{background:#0f151c;border:1px solid #1c2530;border-radius:8px;padding:10px 12px;font-size:14px;color:#9aa6bd}</style></head>
+<body><main><h1>Cont FTMO</h1>
+<p>Introdu datele contului MT5 din emailul FTMO. Parola se trimite direct la MetaApi și nu se salvează la noi. Folosește parola de investitor (doar citire), dacă o ai.</p>
+<div class="cur" id="cur">Se verifică contul curent…</div>
+<label for="lg">Login MT5 (număr)</label><input id="lg" inputmode="numeric" autocomplete="off" spellcheck="false">
+<label for="pw">Parolă (investitor)</label><input id="pw" type="password" autocomplete="off" spellcheck="false">
+<label for="sv">Server (exact ca în email, ex. FTMO-Server)</label><input id="sv" autocomplete="off" spellcheck="false" autocapitalize="off">
+<button id="go">Conectează contul</button>
+<div id="st"></div><p><a href="/">← înapoi la Acasă</a></p></main>
+<script>
+const $=id=>document.getElementById(id),st=$('st');
+function show(h,c){st.className=c||'';st.textContent=h}
+function cur(j){if(j.error)return 'Cont curent: …'+(j.id_end||'')+' · '+j.error;return 'Cont curent: '+(j.login||'?')+' · '+(j.server||'?')+' · stare: '+(j.state||'?')+' · conexiune: '+(j.connection||'?')}
+async function status(){try{const r=await fetch('/api/ext/account',{cache:'no-store'});const j=await r.json();$('cur').textContent=cur(j);return j}catch(e){$('cur').textContent='Nu pot citi starea contului.';return {}}}
+async function wait(){for(let i=0;i<30;i++){await new Promise(r=>setTimeout(r,4000));const j=await status();
+ if(j.connection==='CONNECTED'){show('Conectat. Datele încep să apară pe site în ~1 minut.','ok');return}
+ show('Se conectează… ('+(j.connection||j.state||'așteptare')+')','')}
+ show('Încă nu e conectat. Verifică loginul și serverul sau reîncearcă peste câteva minute.','bad')}
+$('go').onclick=async()=>{const b=$('go');const lg=$('lg').value.trim(),pw=$('pw').value,sv=$('sv').value.trim();
+ if(!lg||!pw||!sv)return show('Completează toate câmpurile.','bad');
+ b.disabled=true;show('Se trimit datele…','');
+ try{const r=await fetch('/api/ext/account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:lg,password:pw,server:sv})});
+  const j=await r.json();$('pw').value='';
+  if(!r.ok){b.disabled=false;return show(j.error||'Eroare','bad')}
+  show('Cont adăugat. Se conectează…','ok');wait()}
+ catch(e){b.disabled=false;show('Eroare: '+e.message,'bad')}};
+status();
+</script></body></html>

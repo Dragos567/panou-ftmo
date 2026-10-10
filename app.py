@@ -445,7 +445,7 @@ LOGIN = """<!doctype html><meta charset=utf-8><meta name=viewport content="width
 <input name=k type=password autofocus autocomplete=current-password placeholder="Cod de acces" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #1c2530;background:#0f151c;color:inherit;font-size:16px">
 <button style="width:100%;margin-top:10px;padding:12px;border-radius:8px;border:0;background:#e0a93b;color:#15110a;font-weight:600;font-size:16px">Intră</button>@@ERR@@</form></body>"""
 STATIC = ["manifest.webmanifest", "sw.js", "icon-180.png", "icon-192.png", "icon-512.png", "favicon.png"]
-PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html", "/lab": "lab.html", "/chei": "chei.html"}
+PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html", "/lab": "lab.html", "/chei": "chei.html", "/cont": "cont.html"}
 RUN = {"p": None}
 def run_probe():
     if RUN["p"] and RUN["p"].poll() is None: return False
@@ -516,6 +516,37 @@ def key_set(name, val):
     except Exception: pass
     fd = os.open(_kpath(name), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f: f.write(val.strip() + "\n")
+
+# ---------------- cont FTMO (MetaApi): se poate schimba din site, fara acces la server ----------------
+_acc = key_get("account_id")
+if _acc: AID = _acc
+def mapi(method, path, body=None, extra=None):
+    h = {"auth-token": TOKEN, "Accept": "application/json"}
+    if body is not None: h["Content-Type"] = "application/json"
+    h.update(extra or {})
+    rq = urllib.request.Request(PROV + path, data=(json.dumps(body).encode() if body is not None else None), headers=h, method=method)
+    try:
+        with urllib.request.urlopen(rq, timeout=60) as r:
+            b = r.read(); return r.status, (json.loads(b) if b else {})
+    except urllib.error.HTTPError as e:
+        b = e.read().decode("utf8", "ignore")
+        try: j = json.loads(b)
+        except Exception: j = {"message": b[:200]}
+        return e.code, j
+def account_status():
+    st, j = mapi("GET", "/users/current/accounts/%s" % AID)
+    if st != 200: return {"id_end": AID[-6:], "error": (j.get("message") or "HTTP %s" % st)[:200]}
+    return {"id_end": AID[-6:], "name": j.get("name"), "login": j.get("login"), "server": j.get("server"), "state": j.get("state"), "connection": j.get("connectionStatus")}
+def account_connect(login, password, server):
+    global AID
+    st, j = mapi("POST", "/users/current/accounts", {"name": "Altrix-FTMO-" + time.strftime("%m%d%H%M"), "type": "cloud-g2", "login": login, "password": password,
+                 "server": server, "platform": "mt5", "magic": 0, "application": "MetaApi", "reliability": "high"}, {"transaction-id": secrets.token_hex(16)})
+    if st not in (200, 201, 202) or not j.get("id"):
+        return st, {"error": (j.get("message") or j.get("error") or "HTTP %s" % st)[:300]}
+    AID = j["id"]; key_set("account_id", AID); _base.clear()
+    try: mapi("POST", "/users/current/accounts/%s/deploy" % AID, None, {"transaction-id": secrets.token_hex(16)})
+    except Exception: pass
+    return 200, {"saved": True, "id_end": AID[-6:]}
 def databento_test():
     """Verifica accesul serverului la Databento si valabilitatea cheii (apel gratuit de metadate)."""
     k = key_get("databento")
@@ -738,6 +769,7 @@ class H(BaseHTTPRequestHandler):
                 if sym not in SYMS or tf not in TFS: return self.send(400, {"error": "parametri invalizi"})
                 return self.send(200, get_candles(sym, tf, qs.get("tail", [""])[0] == "1"))
             if u.path == "/api/build": return self.send(200, {"build": _mtime()})
+            if u.path == "/api/ext/account": return self.send(200, account_status())
             if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else (databento_dl(qs) if qs.get("do", [""])[0] in ("download", "dlstatus", "estimate", "book", "bookstatus") else databento_test())))
             if u.path == "/api/quotes": return self.send(200, get_quotes())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
@@ -766,6 +798,16 @@ class H(BaseHTTPRequestHandler):
                 return self.send(303, b"", "text/plain", {"Location": "/", "Set-Cookie": cookie_hdr(make_session())})
             note_fail(ip); time.sleep(1.0)
             return self.send(401, LOGIN.replace("@@ERR@@", '<p style="color:#ef5b6b">Cod greșit.</p>'), "text/html; charset=utf-8")
+        if u.path == "/api/ext/account":
+            if not self.authed(u, qs): return
+            n = min(int(self.headers.get("Content-Length") or 0), 4096)
+            try: d = json.loads(self.rfile.read(n).decode("utf8"))
+            except Exception: d = {}
+            lg, pw, sv = str(d.get("login") or "").strip(), str(d.get("password") or ""), str(d.get("server") or "").strip()
+            if not (lg.isdigit() and 5 <= len(lg) <= 12) or not (1 <= len(pw) <= 100) or not (3 <= len(sv) <= 60):
+                return self.send(400, {"error": "date invalide (login numeric, parola, serverul exact din emailul FTMO)"})
+            code, out = account_connect(lg, pw, sv)
+            return self.send(code if code == 200 else 400, out)
         if u.path == "/api/ext/databento":
             if not self.authed(u, qs): return
             n = min(int(self.headers.get("Content-Length") or 0), 2048)
