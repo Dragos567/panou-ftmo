@@ -663,7 +663,7 @@ function renderTabs(){
   $('#tfTabs').innerHTML=TFS.map(t=>`<button class="tab tf" type="button" data-tf="${t}" aria-pressed="${t===S.tf}">${t==='1d'?'Zi':t}</button>`).join('')}
 function qState(q){if(!q||!q.price)return{c:'x',t:'fără date'};const now=Date.now()/1000;const age=q.qt?now-q.qt:(q.ok?now-q.ok:null);
   if(age==null)return{c:'ok',t:'live'};if(age<=90)return{c:'ok',t:'live'};if(age<=600)return{c:'lag',t:'întârziat '+Math.round(age/60)+' min'};
-  const d=new Date((q.qt||q.ok)*1000);return{c:'off',t:'piață închisă · '+d.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})}}
+  const d=new Date((q.qt||q.ok)*1000),td=new Date(),same=d.toDateString()===td.toDateString();return{c:'off',t:'piață închisă · ultima cotație '+(same?'':d.toLocaleDateString('ro-RO',{weekday:'long'})+' ')+d.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})}}
 function renderStatus(){
   const el=$('#status');
   if(S.err){el.innerHTML=`<span class="dot bad"></span>Fără conexiune la date<br><span style="color:var(--down)">${S.err}</span>`;return}
