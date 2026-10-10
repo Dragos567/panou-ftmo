@@ -760,7 +760,7 @@ function renderStatus(){
   if(!S.bars){el.textContent='Se încarcă…';return}
   const last=S.bars.bars[S.bars.bars.length-1][0],age=Date.now()/1000-last,lim=S.tf==='1d'?5*86400:Math.max(3*TFSEC[S.tf],1800);
   const old=age>lim;
-  el.innerHTML=`<span class="dot ${old?'old':''}"></span>${old?'Piață închisă sau date întârziate':'Live'} · ultima lumânare ${tfmt(last)}<br>Actualizat ${new Date(S.lastOk).toLocaleTimeString('ro-RO')} · ${S.bars.source} · ${S.bars.bars.length} lumânări`}
+  el.innerHTML=`<span class="dot ${old?'old':''}"></span>${old?'Piață închisă sau date întârziate':'Live'} · ultima lumânare ${tfmt(last)}<br>Actualizat <span class="clk">${new Date().toLocaleTimeString('ro-RO')}</span> · ${S.bars.source} · ${S.bars.bars.length} lumânări`}
 function renderPriceHead(){
   const I=INSTR[S.sym];$('#phName').textContent=I.label+' · '+I.ftmo;
   const q=S.quotes[S.sym],b=S.bars;const price=(q&&q.price)||(b&&b.price),prev=(q&&q.prev)||(b&&b.prevClose);
@@ -1251,6 +1251,7 @@ function liveTick(){
   renderPriceHead();redraw()}
 loadQuotes=async function(){if(inQ)return;inQ=true;try{S.quotes=await rawApi('/api/quotes');renderTabs();liveTick();renderFtmoOut()}catch(e){}inQ=false};
 // ritm de actualizare
+setInterval(function(){var t=new Date().toLocaleTimeString('ro-RO');document.querySelectorAll('.clk').forEach(function(e){e.textContent=t})},1000);
 const vis=()=>!document.hidden;
 setInterval(()=>{if(vis())loadQuotes()},1500);
 let ctick=0;setInterval(()=>{if(!vis())return;ctick++;const fast=TFSEC[S.tf]<=900;if(fast?ctick%4===0:ctick%10===0)loadCandles()},1000);

@@ -775,7 +775,7 @@ function renderEv(){
   $('#evBanner').innerHTML=e?`<div class="ev">⚠ Știre de impact (${esc(e.currency)}): ${esc(e.title)} ${cd(e.ts)}. Volatilitate mare probabilă pe ${IN.filter(k=>impactOf(e,1)[k].d).map(k=>INSTR[k].label).join(', ')||'instrumentele tale'}.</div>`:''}
 function renderStatus(){const el=$('#status');
   if(S.err){el.innerHTML=`<span class="dot bad"></span>Fără conexiune la date<br><span style="color:var(--down)">${esc(S.err)}</span>`;return}
-  el.innerHTML=S.lastOk?`<span class="dot"></span>Live · actualizat ${new Date(S.lastOk).toLocaleTimeString('ro-RO')}`:'Se încarcă…'}
+  el.innerHTML=S.lastOk?`<span class="dot"></span>Live · actualizat <span class="clk">${new Date().toLocaleTimeString('ro-RO')}</span>`:'Se încarcă…'}
 function tick(){document.querySelectorAll('.cdn').forEach(el=>el.textContent=cd(+el.dataset.ts));document.querySelectorAll('.cdn2').forEach(el=>el.textContent=cd2(+el.dataset.ts))}
 
 /* ---------- încărcare ---------- */
@@ -787,6 +787,7 @@ $('#calFilter').addEventListener('click',e=>{const b=e.target.closest('[data-f]'
 $('#newsTabs').addEventListener('click',e=>{const b=e.target.closest('[data-nt]');if(b){S.newsTab=b.dataset.nt;store.set('nt',S.newsTab);renderNews();loadNews()}});
 function applyTheme(t){document.documentElement.dataset.theme=t;store.set('theme',t)}
 applyTheme(store.get('theme','dark'));$('#btnTheme').onclick=()=>applyTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
+setInterval(function(){var t=new Date().toLocaleTimeString('ro-RO');document.querySelectorAll('.clk').forEach(function(e){e.textContent=t})},1000);
 renderStrip();renderNews();renderCal();renderBias();renderNext();renderHero();renderStatus();
 loadCal();loadNews();loadQuotes();
 setInterval(loadCal,120000);setInterval(loadNews,150000);setInterval(()=>{if(!document.hidden)loadQuotes()},2000);setInterval(tick,1000);setInterval(()=>{renderEv();renderNext();renderHero()},30000);
