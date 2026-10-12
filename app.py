@@ -622,6 +622,39 @@ def databento_dl(qs):
     ok = dbdl.start(root, key_get("databento"), syms, qs.get("start", ["2023-10-06"])[0], qs.get("end", ["2026-10-05"])[0], cap)
     return {"started": ok, "syms": syms, "cap": cap}
 
+# ---------------- export istoric (CSV gz) pentru analiza externa ----------------
+def export_csv_gz(sym, years, tf_out):
+    import struct as _st
+    H = None
+    for h in (HIST, HIST2, HIST3):
+        if h is not None and sym in h.syms: H = h; break
+    if H is None: return None, "simbol necunoscut (EURUSD, NIKKEI, DAX au M1; GOLD, US100, US500, GBPUSD, USDJPY, US30, UK100 au M15; restul zilnic)"
+    raw = H.read_bytes(sym); rs = 44; n = len(raw) // rs
+    if n == 0: return None, "nu exista inca istoric pentru acest simbol"
+    base = {"1m": 60, "15m": 900, "1d": 86400}.get(H.tf, 60)
+    sec = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}.get(tf_out, base)
+    if sec < base: return None, "timeframe-ul cerut e mai mic decat istoricul disponibil (%s)" % H.tf
+    t0 = time.time() - years * 365.25 * 86400
+    buf = io.BytesIO(); gz = gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=6)
+    gz.write(b"time_utc,open,high,low,close,volume\n")
+    cur = None; rows = 0; unp = _st.Struct("<qddddf").unpack_from
+    def emit(b):
+        gz.write(("%s,%.8g,%.8g,%.8g,%.8g,%d\n" % (dt.datetime.utcfromtimestamp(b[0]).strftime("%Y-%m-%d %H:%M:%S"), b[1], b[2], b[3], b[4], b[5])).encode())
+    for i in range(n):
+        t, o, h, l, c, v = unp(raw, i * rs)
+        if t < t0: continue
+        k = t - t % sec
+        if cur is not None and cur[0] == k:
+            if h > cur[2]: cur[2] = h
+            if l < cur[3]: cur[3] = l
+            cur[4] = c; cur[5] += v
+        else:
+            if cur is not None: emit(cur); rows += 1
+            cur = [k, o, h, l, c, v]
+    if cur is not None: emit(cur); rows += 1
+    gz.close()
+    return buf.getvalue(), rows
+
 class H(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     timeout = 60
@@ -770,6 +803,13 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, get_candles(sym, tf, qs.get("tail", [""])[0] == "1"))
             if u.path == "/api/build": return self.send(200, {"build": _mtime()})
             if u.path == "/api/ext/account": return self.send(200, account_status())
+            if u.path == "/api/export":
+                sy = qs.get("sym", ["EURUSD"])[0].upper(); tf = qs.get("tf", [""])[0]
+                try: yr = max(0.1, min(10.0, float(qs.get("years", ["3"])[0])))
+                except Exception: yr = 3.0
+                body, info = export_csv_gz(sy, yr, tf)
+                if body is None: return self.send(404, {"error": info})
+                return self.send(200, body, "application/gzip", {"Content-Disposition": 'attachment; filename="%s_%s_%gy.csv.gz"' % (sy, tf or "raw", yr), "X-Rows": str(info)})
             if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else (databento_dl(qs) if qs.get("do", [""])[0] in ("download", "dlstatus", "estimate", "book", "bookstatus") else databento_test())))
             if u.path == "/api/quotes": return self.send(200, get_quotes())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
