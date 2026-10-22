@@ -186,6 +186,20 @@ def spread_add(s, sp):
             try:
                 tmp = os.path.join(DATA, "spread.json.tmp"); json.dump(_SPD["v"], open(tmp, "w")); os.replace(tmp, os.path.join(DATA, "spread.json"))
             except Exception: pass
+_DREF = {}
+def prev_daily_close(s):
+    """Inchiderea zilei anterioare (bara D1 de dinaintea celei curente), ca la orice platforma. Reimprospateaza barele D1 la ~5 min. None daca nu avem date proaspete."""
+    now = time.time()
+    if now - _DREF.get(s, 0) > 300:
+        _DREF[s] = now
+        try: merge(s, "1d", fetch_candles(s, "1d", None, 6))
+        except Exception as e: STAT.setdefault("qerr", {})[s + "_d1"] = (time.strftime("%H:%M:%S ") + str(e)[:90])
+    with SLOCK: d = list(STORE.get((s, "1d"), []))
+    idx = None
+    for i in range(len(d) - 1, -1, -1):
+        if d[i][0] <= now: idx = i; break
+    if idx is None or idx < 1 or now - d[idx][0] > 2 * 86400: return None
+    return d[idx - 1][4]
 def _qone(s):
     # un simbol, independent: un simbol lent nu mai blocheaza restul
     while True:
@@ -193,7 +207,7 @@ def _qone(s):
             cb, _ = bases()
             p = http("%s/users/current/accounts/%s/symbols/%s/current-price" % (cb, AID, urllib.parse.quote(SYMS[s], safe="")), tries=1, timeout=10)
             with SLOCK: h = STORE.get((s, "1h")) or STORE.get((s, "15m")) or STORE.get((s, "5m"))
-            prev = prev_24h(h) if h else (_qc["v"].get(s) or {}).get("prev")
+            prev = prev_daily_close(s) or (prev_24h(h) if h else (_qc["v"].get(s) or {}).get("prev"))
             try: qt = parse_t(p["time"]) if p.get("time") else None
             except Exception: qt = None
             with _ql: _qc["v"][s] = {"price": p["bid"], "prev": prev, "qt": qt, "ok": time.time()}; _qc["t"] = time.time()
