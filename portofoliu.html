@@ -216,6 +216,24 @@ td small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin
 <div class="card"><svg id="eq" viewBox="0 0 700 280" width="100%" role="img" aria-label="Evoluția a 100 investiți"></svg><div class="legend" id="eleg"></div></div>
 <p class="note">Fără costuri, taxe și curs valutar. Anii 2025–2026 nu sunt în calcul (nu am putut verifica toate seriile); S&amp;P 500 a făcut ~+17,7% în 2025 și ~+13% în 2026 până acum.</p>
 
+<h2>Realitatea țintei de 30–40% pe an</h2>
+<div class="warnbox"><b>Cinstit:</b> 30–40% pe an, <u>constant</u>, 2–5 ani la rând, nu este un randament de portofoliu realist; e un caz fericit. Fondurile celebre de top fac ~15–25% pe an pe termen lung. Poți prinde ani de +30–50% (2020, 2023), dar plătești cu ani de −30…−50%.</div>
+<div class="grid" style="margin-top:12px">
+<div class="card"><div class="k">Nasdaq 100 (QQQ), 2007–2024</div><div class="v warn">1 din 16</div><div class="sub">ferestre de 3 ani cu ≥30%/an (cea mai bună: 38%/an, cea mai slabă: 2%/an). La 5 ani: 0 din 14, maxim 28%/an.</div></div>
+<div class="card"><div class="k">Simulare Ofensiv · 3 ani</div><div class="v warn">~19%</div><div class="sub">șansă de ≥30%/an; ~18% să fii pe minus după 3 ani; mediană ~14%/an.</div></div>
+<div class="card"><div class="k">Simulare Ofensiv · 5 ani</div><div class="v warn">~13%</div><div class="sub">șansă de ≥30%/an; ~12% pe minus; mediană ~14%/an.</div></div>
+<div class="card"><div class="k">Dacă ipotezele sunt prea optimiste</div><div class="v down">~7–13%</div><div class="sub">șansă de ≥30%/an dacă randamentul mediu e 14% în loc de 18%.</div></div>
+</div>
+<div class="card" style="margin-top:12px"><b>Regulile care fac portofoliul Ofensiv supraviețuibil:</b>
+<ul class="cl">
+<li><b>Maxim 10% pe o poziție</b> (Bitcoin și uraniu: 10% și 5% sunt plafonul, nu ținta).</li>
+<li><b>Fără levier</b>, fără împrumuturi. Cu levier 2–3x, o cădere de 35% te poate scoate din joc.</li>
+<li><b>Regulă de siguranță:</b> dacă portofoliul scade 20% de la vârf, treci automat pe „Creștere” (reduci riscul, nu aștepți revenirea).</li>
+<li><b>Bani doar din „partea de risc”:</b> nu bani de care ai nevoie în 2 ani și nu capitalul de trading.</li>
+<li><b>Intrare eșalonată</b> în 6–12 tranșe, mai ales după rally-uri mari.</li>
+<li><b>Revizuire trimestrială:</b> scoți ce are teza stricată, nu ce a scăzut puțin.</li>
+</ul>
+<div class="note" style="margin-top:8px">Pentru un trader, drumul spre 30–40% e mai realist prin trading cu edge testat și risc controlat (ce faci deja) decât prin portofoliu; portofoliul e partea care te ține în joc între timp.</div></div>
 <h2>Calculator: cum împarți banii</h2>
 <div class="card"><div class="sub" style="margin-bottom:10px">Folosește portofoliul ales mai sus. Calculul rulează doar în browser, nu se salvează și nu se trimite nicăieri.</div>
 <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
@@ -274,6 +292,7 @@ td small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin
 
 <h2>Metodă și limite (cinstit)</h2>
 <div class="card"><ul class="cl">
+<li>Portofoliul Ofensiv nu are backtest: cifrele lui sunt simulări cu ipoteze (media 18%, volatilitate 30%), iar ETF-urile UCITS și tickerele trebuie verificate la broker. Tematicile (cipuri, uraniu, cupru, Bitcoin) pot pierde 50% sau mai mult.</li>
 <li>Randamentele anuale 2007–2024 sunt randamente totale aproximative (rotunjite) ale ETF-urilor SPY, QQQ, EEM, GLD, IEF, TLT și ale ratelor la bonuri de trezorerie, introduse manual; nu am putut reverifica fiecare cifră live (sursele de date pe care le-am avut au limită de cereri). Tratează diferențe de ±1–2 puncte ca posibile.</li>
 <li>Datele live verificate: SPY (serie lunară), randamentul Treasury 10 ani, aurul spot.</li>
 <li>„All Weather" aici e o aproximare cu ETF-uri (30% SPY, 40% TLT, 15% IEF, 15% GLD), nu portofoliul real al lui Dalio.</li>
@@ -285,11 +304,12 @@ td small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin
 <script>
 const D={"years": [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024], "p": {"Altrix Ancora": {"cagr": 8.2, "vol": 10.3, "mdd": -14.3, "worst": -14.3, "best": 20.4, "neg": 4, "sharpe": 0.7, "ser": [14.4, -11.5, 19.7, 15.7, 6.9, 9.7, 5.7, 8.6, -1.4, 6.8, 15.3, -2.2, 20.4, 19.4, 9.6, -14.3, 17.9, 15.7], "eq": [114.4, 101.3, 121.2, 140.3, 149.9, 164.4, 173.8, 188.7, 186.2, 198.8, 229.1, 224.1, 269.8, 322.1, 352.8, 302.4, 356.5, 412.4]}, "Altrix Creștere": {"cagr": 10.3, "vol": 14.2, "mdd": -21.3, "worst": -21.3, "best": 28.5, "neg": 4, "sharpe": 0.69, "ser": [15.4, -21.3, 28.5, 18.3, 5.8, 12.7, 13.2, 11.0, -0.4, 8.5, 20.4, -3.0, 26.3, 25.0, 15.5, -18.0, 25.1, 20.3], "eq": [115.4, 90.8, 116.6, 138.0, 145.9, 164.5, 186.2, 206.6, 205.7, 223.3, 268.8, 260.8, 329.5, 411.8, 475.4, 389.7, 487.4, 586.4]}, "S&P 500": {"cagr": 10.3, "vol": 18.2, "mdd": -36.8, "worst": -36.8, "best": 32.3, "neg": 3, "sharpe": 0.57, "ser": [5.1, -36.8, 26.4, 15.1, 1.9, 16.0, 32.3, 13.5, 1.2, 12.0, 21.7, -4.6, 31.2, 18.4, 28.7, -18.2, 26.2, 24.9], "eq": [105.1, 66.4, 84.0, 96.6, 98.5, 114.2, 151.1, 171.5, 173.6, 194.4, 236.6, 225.7, 296.1, 350.6, 451.3, 369.1, 465.8, 581.8]}, "60/40": {"cagr": 8.0, "vol": 10.7, "mdd": -16.9, "worst": -16.9, "best": 22.2, "neg": 3, "sharpe": 0.67, "ser": [6.9, -14.8, 13.2, 12.8, 7.6, 11.0, 16.9, 11.7, 1.3, 7.6, 14.1, -2.4, 22.2, 15.4, 16.0, -16.9, 17.4, 14.7], "eq": [106.9, 91.0, 103.1, 116.3, 125.1, 138.9, 162.5, 181.5, 183.9, 197.9, 225.7, 220.3, 269.1, 310.5, 360.2, 299.3, 351.4, 402.9]}, "All Weather (aprox.)": {"cagr": 6.8, "vol": 9.7, "mdd": -20.3, "worst": -20.3, "best": 19.0, "neg": 4, "sharpe": 0.59, "ser": [11.5, 5.9, 1.8, 13.9, 18.0, 7.4, -0.8, 16.0, -1.7, 5.5, 12.5, -2.2, 19.0, 18.2, 5.7, -20.3, 11.6, 8.1], "eq": [111.5, 118.1, 120.3, 137.0, 161.8, 173.7, 172.3, 199.8, 196.4, 207.1, 233.0, 227.9, 271.2, 320.4, 338.7, 269.9, 301.3, 325.7]}}};
 const $=id=>document.getElementById(id);
-const META={SPY:['S&P 500','SPY','CSPX / VUAA','Nucleul de creștere: 500 de companii mari americane'],QQQ:['Nasdaq 100','QQQ','CNDX / EQQQ','Tehnologie și AI, mai volatil'],EEM:['Piețe emergente','EEM','EIMI','Diversificare în afara SUA'],GLD:['Aur','GLD','SGLN / 4GLD','Protecție la inflație și crize'],IEF:['Trezorerie SUA 7–10 ani','IEF','IBTM','Randament ~5% și plasă la recesiune'],TLT:['Trezorerie SUA 20+ ani','TLT','IDTL','Câștigă mult când dobânzile scad'],DBC:['Mărfuri diversificate','DBC','CMOD / ICOM','Energie, metale, agricole: protecție la inflație'],CASH:['Cash / bonuri trezorerie','SGOV','XEON','Liniște și muniție pentru oportunități']};
+const META={SPY:['S&P 500','SPY','CSPX / VUAA','Nucleul de creștere: 500 de companii mari americane'],QQQ:['Nasdaq 100','QQQ','CNDX / EQQQ','Tehnologie și AI, mai volatil'],EEM:['Piețe emergente','EEM','EIMI','Diversificare în afara SUA'],GLD:['Aur','GLD','SGLN / 4GLD','Protecție la inflație și crize'],IEF:['Trezorerie SUA 7–10 ani','IEF','IBTM','Randament ~5% și plasă la recesiune'],TLT:['Trezorerie SUA 20+ ani','TLT','IDTL','Câștigă mult când dobânzile scad'],SMH:['Semiconductori','SMH','VanEck Semiconductor UCITS','Lopatele corsei AI: cipuri, foarte ciclic'],ASML:['ASML','ASML','acțiune (Euronext)','Monopol litografie avansată'],MSFT:['Microsoft','MSFT','acțiune','AI + cloud, calitate înaltă'],GDX:['Miniere de aur','GDX','VanEck Gold Miners UCITS','Levier pe aur: câștigă mai mult, pierde mai mult'],COPX:['Miniere de cupru','COPX','Global X Copper Miners UCITS','Electrificare și rețele'],URA:['Uraniu / nuclear','URA','Global X Uranium UCITS','Energie pentru AI, volatilitate extremă'],INDA:['India','INDA','iShares MSCI India UCITS','Creștere structurală'],BTC:['Bitcoin','IBIT','ETP bitcoin fizic (BTCE / VBTC)','Cel mai volatil activ din portofoliu'],DBC:['Mărfuri diversificate','DBC','CMOD / ICOM','Energie, metale, agricole: protecție la inflație'],CASH:['Cash / bonuri trezorerie','SGOV','XEON','Liniște și muniție pentru oportunități']};
 const PF={'Altrix Creștere':{w:{SPY:40,QQQ:20,EEM:5,GLD:20,IEF:10,TLT:5},d:'Echilibrul recomandat: creștere ca S&P 500, dar cu pierderi mult mai mici în crize.'},
 'Dalio · All Weather':{bt:'All Weather (aprox.)',w:{SPY:30,TLT:40,IEF:15,GLD:7.5,DBC:7.5},d:'Portofoliul lui Ray Dalio, în forma lui clasică: echilibrat pe 4 scenarii economice. Atenție: azi, cu dobânzile în creștere, partea de obligațiuni lungi (40%) e punctul slab.'},
+'Altrix Ofensiv':{sim:{mu:18,sd:30},w:{QQQ:25,SMH:15,ASML:5,MSFT:5,GDX:10,COPX:5,URA:5,INDA:5,BTC:10,GLD:10,CASH:5},d:'Pentru 2–5 ani: concentrat, tematic, volatil. Țintește cât de sus se poate, cu 20–25% pierdere la nevoie (regula de siguranță de mai jos).'},
 'Altrix Ancora':{w:{SPY:30,QQQ:10,EEM:5,GLD:20,IEF:20,TLT:5,CASH:10},d:'Versiunea prudentă: dormi liniștit, randament mai mic, căderi mici.'}};
-const COL={DBC:'#ff9f5a',SPY:'#5ad8f5',QQQ:'#8ea2ff',EEM:'#ff8ad0',GLD:'#f5d68a',IEF:'#4fe08a',TLT:'#2fae7a',CASH:'#9aa6bd'};
+const COL={SMH:'#b18cff',ASML:'#7fd1ff',MSFT:'#4aa3ff',GDX:'#ffc34d',COPX:'#ff9f5a',URA:'#c6e65a',INDA:'#ff6fa5',BTC:'#ff8a3d',DBC:'#ff9f5a',SPY:'#5ad8f5',QQQ:'#8ea2ff',EEM:'#ff8ad0',GLD:'#f5d68a',IEF:'#4fe08a',TLT:'#2fae7a',CASH:'#9aa6bd'};
 const LC={'Altrix Creștere':'#f5d68a','Altrix Ancora':'#4fe08a','S&P 500':'#5ad8f5','60/40':'#ff8ad0','All Weather (aprox.)':'#9aa6bd'};
 let cur='Altrix Creștere';
 const f1=x=>(x>0?'+':'')+String(x).replace('.',',');
@@ -301,19 +321,20 @@ function donut(w){let a=-Math.PI/2,s='',cx=100,cy=100,R=84,r=52;
   s+='<path d="M'+A+' A'+R+' '+R+' 0 '+l+' 1 '+B+' L'+C+' A'+r+' '+r+' 0 '+l+' 0 '+E+'Z" fill="'+COL[k]+'" stroke="var(--bg)" stroke-width="2"/>';a=b});
  $('donut').innerHTML=s+'<text x="100" y="98" text-anchor="middle" style="font:600 20px var(--font);fill:var(--text)">100%</text><text x="100" y="116" text-anchor="middle">alocare</text>';
  $('dleg').innerHTML=Object.keys(w).map(k=>'<span><i style="background:'+COL[k]+'"></i>'+META[k][0]+' '+w[k]+'%</span>').join('')}
-function draw(){seg();const p=PF[cur],w=p.w,s=D.p[p.bt||cur];
+function draw(){seg();const p=PF[cur],w=p.w,s=p.sim?null:D.p[p.bt||cur];
  $('pname').textContent=cur;$('pdesc').textContent=p.d;
  $('alloc').innerHTML='<tr><th>Activ</th><th class="n">Pondere</th><th>Echivalent UE</th></tr>'+Object.entries(w).map(([k,v])=>'<tr><td><span class="pill" style="border-color:'+COL[k]+'">'+META[k][1]+'</span> '+META[k][0]+'<small>'+META[k][3]+'</small></td><td class="n wt">'+v+'%</td><td>'+META[k][2]+'</td></tr>').join('');
  donut(w);
- const k=[['Randament mediu / an',String(s.cagr).replace('.',',')+'%','2007–2024 (compus)','up'],['Volatilitate',String(s.vol).replace('.',',')+'%','abatere anuală',''],['Cădere maximă',String(s.mdd).replace('.',',')+'%','cel mai prost an','down'],['Cel mai bun an',f1(s.best)+'%','',''],['Ani negativi',s.neg+' din 18','',''],['Raport randament/risc',String(s.sharpe).replace('.',','),'peste 1,5% fără risc','']];
+ const SIM={3:{p30:19,pneg:18,p10:-4.9,p50:14.4,p90:37.7},5:{p30:13,pneg:12,p10:-1.0,p50:14.3,p90:32.1}};
+ const k=p.sim?[['Randament „median” / an','~14%','scenariu tipic 3–5 ani','up'],['An bun (top 10%)','~+32–38%','media pe 3–5 ani','up'],['Scenariu prost (cele mai rele 10%)','−5% … −1%','media pe 3–5 ani','down'],['Șansă de ≥30% / an','13–19%','3–5 ani','warn'],['Șansă de pierdere','12–18%','după 3–5 ani','down'],['Cădere maximă posibilă','−35% … −55%','în drum, nu doar la final','down']]:[['Randament mediu / an',String(s.cagr).replace('.',',')+'%','2007–2024 (compus)','up'],['Volatilitate',String(s.vol).replace('.',',')+'%','abatere anuală',''],['Cădere maximă',String(s.mdd).replace('.',',')+'%','cel mai prost an','down'],['Cel mai bun an',f1(s.best)+'%','',''],['Ani negativi',s.neg+' din 18','',''],['Raport randament/risc',String(s.sharpe).replace('.',','),'peste 1,5% fără risc','']];
  $('kpis').innerHTML=k.map(x=>'<div class="card"><div class="k">'+x[0]+'</div><div class="v '+x[3]+'">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>').join('');
- $('kpis').insertAdjacentHTML('beforeend',p.bt?'<div class="note" style="grid-column:1/-1">Statisticile sunt ale aproximării fără mărfuri (cele 7,5% DBC nu au serie istorică în calcul).</div>':'');eq();yrs();calc()}
+ $('kpis').insertAdjacentHTML('beforeend',(p.bt?'<div class="note" style="grid-column:1/-1">Statisticile sunt ale aproximării fără mărfuri (cele 7,5% DBC nu au serie istorică în calcul).</div>':'')+(p.sim?'<div class="note" style="grid-column:1/-1">Fără backtest: nu am date istorice verificate pentru toate pozițiile. Cifrele vin dintr-o simulare (18% randament mediu, 30% volatilitate, ipoteze, nu promisiuni). Vezi cardul „Realitatea țintei de 30–40%”.</div>':''));eq();yrs();calc()}
 function eq(){const names=Object.keys(D.p),Y=D.years;let mx=0;names.forEach(n=>D.p[n].eq.forEach(v=>mx=Math.max(mx,v)));
  const W=700,H=280,l=40,r=10,t=10,b=24,X=i=>l+(W-l-r)*i/(Y.length-1),V=v=>H-b-(H-b-t)*Math.log(v/60)/Math.log(mx*1.05/60);
  let s='';[100,200,400,800].filter(v=>v<mx).forEach(v=>{s+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+V(v)+'" y2="'+V(v)+'" stroke="var(--line)"/><text x="4" y="'+(V(v)+4)+'">'+v+'</text>'});
  Y.forEach((y,i)=>{if(i%3==0||i==Y.length-1)s+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="middle">'+y+'</text>'});
  names.forEach(n=>{const e=[100].concat(D.p[n].eq);const pts=e.map((v,i)=>[l+(W-l-r)*i/(e.length-1),V(v)]);
-  const hi=n===(PF[cur].bt||cur);s+='<polyline fill="none" stroke="'+LC[n]+'" stroke-width="'+(hi?3:1.6)+'" opacity="'+(hi?1:.7)+'" stroke-linejoin="round" points="'+pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'"/>'});
+  const hi=n===(PF[cur].bt||cur)&&!PF[cur].sim;s+='<polyline fill="none" stroke="'+LC[n]+'" stroke-width="'+(hi?3:1.6)+'" opacity="'+(hi?1:.7)+'" stroke-linejoin="round" points="'+pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'"/>'});
  $('eq').innerHTML=s;
  $('eleg').innerHTML=names.map(n=>'<span><i style="background:'+LC[n]+'"></i>'+n+' · '+D.p[n].cagr+'%/an · cădere '+D.p[n].mdd+'%</span>').join('')}
 function yrs(){const names=Object.keys(D.p);
