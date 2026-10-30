@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Altrix · Portofoliu</title>
+<link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/favicon.png">
+<style>
+:root{--bg:#0b0f14;--panel:#121820;--line:#1f2935;--text:#d6dde7;--muted:#7c8a9b;--up:#33c48d;--down:#ef5b6b;--warn:#e0a93b;--accent:#6ea8fe;
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:ui-monospace,'SF Mono',Consolas,monospace;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 var(--font);padding:12px 16px calc(90px + env(safe-area-inset-bottom,0px));max-width:1100px;margin-inline:auto}
+.top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.brand{font-weight:600;letter-spacing:.02em}.brand small{display:block;font-weight:400;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.nav{display:flex;gap:6px;flex-wrap:wrap}.nav a{padding:6px 10px;border:1px solid var(--line);border-radius:6px;color:var(--muted);text-decoration:none;font-size:13px}
+.nav a[aria-current]{color:var(--text);border-color:var(--warn);background:#1a1710}
+.tabbar{display:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:14px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.v{font:600 24px var(--mono);margin-top:4px;font-variant-numeric:tabular-nums}
+.sub{font-size:12px;color:var(--muted);margin-top:2px}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px;font-weight:600}
+.bar{height:8px;background:#1b2430;border-radius:4px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--accent)}
+.up{color:var(--up)}.down{color:var(--down)}.warn{color:var(--warn)}.muted{color:var(--muted)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:var(--muted)}.dot.on{background:var(--up);box-shadow:0 0 0 3px #33c48d33}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tbl{overflow-x:auto}
+.funnel .row{display:flex;align-items:center;gap:10px;margin:7px 0}.funnel .nm{width:200px;flex:none;font-size:13px}.funnel .bw{flex:1;height:18px;background:#1b2430;border-radius:4px;overflow:hidden}.funnel .bw i{display:block;height:100%;background:var(--accent);min-width:2px}.funnel .ct{width:60px;text-align:right;font-family:var(--mono)}
+button{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 12px;font:inherit;cursor:pointer}
+.note{font-size:12px;color:var(--muted);line-height:1.5}
+@media (max-width:760px){.top .nav{display:none}.funnel .nm{width:120px;font-size:12px}
+.tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:#0b0f14ee;border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+.tabbar a{flex:1;text-align:center;text-decoration:none;color:var(--muted);font-size:11px;padding:6px 2px}.tabbar a b{display:block;font-size:16px}.tabbar a.on{color:var(--text)}}
+</style><style id="altrix-v3">
+/* ===== Altrix v3: premium iOS (sticla, iconite squircle, accent sampanie) ===== */
+:root{
+  --bg:#06080d;--bg2:#0a0d13;--panel:rgba(255,255,255,.055);--panel2:rgba(255,255,255,.04);--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.18);
+  --text:#f4f6fa;--muted:rgba(235,240,250,.58);--up:#4fe08a;--down:#ff6b61;--warn:#f5d68a;--accent:#f5d68a;--tabon:rgba(245,214,138,.12);
+  --gold1:#f5d68a;--gold2:#c9993f;--glow:none;--r:26px;--r2:16px;--shadow:none;
+  --font:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif;
+  --spring:cubic-bezier(.34,1.4,.5,1);--ease:cubic-bezier(.2,.8,.2,1);
+}
+:root[data-theme="light"]{
+  --bg:#f2f3f7;--panel:rgba(255,255,255,.85);--panel2:rgba(255,255,255,.6);--line:rgba(0,0,0,.08);--line2:rgba(0,0,0,.16);
+  --text:#14161c;--muted:rgba(30,36,50,.58);--up:#16a34a;--down:#dc2626;--warn:#a8741a;--accent:#a8741a;--tabon:rgba(168,116,26,.10);
+}
+html{background:var(--bg)}
+body{font-family:var(--font);background:transparent;letter-spacing:-.003em;position:relative}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(520px 320px at 6% -2%,rgba(201,153,63,.26),transparent 70%),radial-gradient(520px 380px at 100% 6%,rgba(60,110,255,.22),transparent 70%),radial-gradient(480px 320px at 40% 104%,rgba(130,70,255,.16),transparent 70%),var(--bg)}
+:root[data-theme="light"] body::before{background:radial-gradient(520px 320px at 6% -2%,rgba(245,214,138,.5),transparent 70%),radial-gradient(520px 380px at 100% 6%,rgba(120,160,255,.35),transparent 70%),var(--bg)}
+::selection{background:color-mix(in srgb,var(--gold1) 35%,transparent)}
+.num,.mono,.kpi .v,.phead .big,td.mono{font-variant-numeric:tabular-nums}
+
+/* antet */
+.top{background:rgba(10,13,20,.55);backdrop-filter:saturate(1.8) blur(22px);-webkit-backdrop-filter:saturate(1.8) blur(22px);border-bottom:.5px solid var(--line)}
+:root[data-theme="light"] .top{background:rgba(242,243,247,.7)}
+.brand{font-weight:600;letter-spacing:-.025em}
+.brand::before{content:"A";display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;background:linear-gradient(145deg,#5eead4,#0f9d8a);color:#042b27;font-weight:700;font-size:18px;box-shadow:0 6px 16px -6px rgba(20,184,166,.7)}
+.brand{display:flex;align-items:center;gap:11px}.brand>*{display:block}
+.brand small{letter-spacing:.1em}
+.status{background:var(--panel2);border:.5px solid var(--line);border-radius:99px}
+
+/* iconite squircle */
+.v3i{display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;border-radius:9px;color:#fff;background:linear-gradient(145deg,var(--c1),var(--c2));box-shadow:0 5px 12px -5px var(--c2)}
+.v3i svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav{background:var(--panel2);border:.5px solid var(--line);border-radius:99px;padding:4px;gap:2px}
+.nav a{display:inline-flex;align-items:center;gap:8px;padding:4px 14px 4px 5px;border-radius:99px;border:0;color:var(--muted);font-weight:500;transition:background .25s var(--ease),color .25s var(--ease),transform .15s var(--spring)}
+.nav a:hover{color:var(--text)}
+.nav a:active{transform:scale(.95)}
+.nav a[aria-current]{background:rgba(255,255,255,.11);color:var(--text);box-shadow:none}
+:root[data-theme="light"] .nav a[aria-current]{background:rgba(0,0,0,.07)}
+.nav a[aria-current]::after{display:none}
+
+/* carduri sticla */
+.card,.kpi,details{background:var(--panel);border:.5px solid var(--line);border-radius:var(--r);box-shadow:none}
+.card{padding:20px}
+.card h2{font-size:12.5px;letter-spacing:.01em;text-transform:none;font-weight:500;color:var(--muted)}
+.card h2::before{display:none}
+.stack,.grid{gap:14px}
+.strip .kpi::before{display:none}
+.kpi{border-radius:22px}
+.strip .kpi .v{font-weight:600;letter-spacing:-.025em}
+.phead .big{font-family:var(--font);font-weight:600;letter-spacing:-.04em;font-size:34px}
+.phead .nm{letter-spacing:-.02em}
+.verdict{border-radius:20px;background:var(--panel2)}
+.stat div{border-radius:16px;background:var(--panel2);border:.5px solid var(--line)}
+.alert{border-radius:16px}
+.chip,.chg,.tag{border-radius:99px}
+.meter,.bar{border-radius:99px}
+.charts{border-radius:16px}
+.nl a:hover{color:var(--gold1)}
+.news .nl li{border-bottom-color:var(--line)}
+
+/* butoane, taburi: pastila, raspuns instant */
+.tab,.btn,.ctl button,.mini,.tool{border-radius:99px;background:var(--panel2);border:.5px solid var(--line);transition:transform .35s var(--spring),background .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease);touch-action:manipulation}
+.tab{border-radius:18px;padding:9px 14px}
+.tab:active,.btn:active,.ctl button:active,.mini:active,.tool:active{transform:scale(.95);transition-duration:.08s}
+.tab[aria-pressed="true"]{border-color:rgba(245,214,138,.65);background:var(--tabon);box-shadow:none}
+.tf{border-radius:99px}
+.btn.pri{background:linear-gradient(145deg,var(--gold1),var(--gold2));color:#2a1c05;border-color:transparent;box-shadow:0 8px 20px -8px rgba(201,153,63,.8)}
+.form input,.form select,.ctl input[type=number],.ctl select{border-radius:14px;background:var(--panel2);border:.5px solid var(--line)}
+.form input:focus,.form select:focus,.ctl input:focus,.ctl select:focus{border-color:var(--gold1);box-shadow:0 0 0 3px rgba(245,214,138,.2)}
+input[type=checkbox]{accent-color:var(--gold1)}
+:focus-visible{outline:2px solid var(--gold1);outline-offset:2px}
+table td,table th{border-bottom-color:var(--line)}
+.dot{animation:none}
+
+/* dock iOS pe telefon */
+@media (max-width:760px){
+  .card{padding:16px;border-radius:24px}
+  .tabbar{left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom,0px));border:.5px solid var(--line2);border-radius:28px;background:rgba(18,22,32,.62);backdrop-filter:saturate(1.8) blur(24px);-webkit-backdrop-filter:saturate(1.8) blur(24px);padding:8px 6px}
+  :root[data-theme="light"] .tabbar{background:rgba(255,255,255,.75)}
+  .tabbar a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:500;background:transparent!important;color:var(--muted)!important;transition:transform .35s var(--spring)}
+  .tabbar a:active{transform:scale(.92);transition-duration:.08s}
+  .tabbar a[aria-current],.tabbar a.on{color:var(--text)!important}
+  .tabbar a .v3i{width:44px;height:44px;border-radius:14px;opacity:.78}
+  .tabbar a .v3i svg{width:24px;height:24px}
+  .tabbar a[aria-current] .v3i,.tabbar a.on .v3i{opacity:1;box-shadow:0 8px 18px -6px var(--c2)}
+  body{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))}
+}
+@keyframes v3in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.grid>*,.stack>*,.strip{animation:v3in .45s var(--ease) both}
+@media (prefers-reduced-transparency:reduce){.top,.tabbar{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* iconite instrumente */
+.ii{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:10px;color:#fff;font:700 13px/1 var(--font);letter-spacing:-.02em;vertical-align:middle;box-shadow:0 5px 12px -5px rgba(0,0,0,.6),inset 0 .5px 0 rgba(255,255,255,.35)}
+.ii.au{background:linear-gradient(145deg,#ffe08a,#d9a02c);color:#3a2705}
+.ii.eu{background:linear-gradient(145deg,#6aa8ff,#2f5fe0);font-size:16px}
+.ii.jp{background:linear-gradient(145deg,#ff8a96,#cf2f45);font-size:16px}
+.ii.de{background:linear-gradient(145deg,#4b5567,#171a22);color:#f5d68a;font-size:10px;letter-spacing:-.03em}
+.ii.nk{background:#fff radial-gradient(circle at 50% 50%,#d6213a 0 31%,transparent 33%)}
+.ii.gb{background:linear-gradient(145deg,#c39bff,#6a3de0);font-size:16px}
+.ii.uk{background:linear-gradient(145deg,#4a6cb8,#1a2a55);font-size:11px}
+.tab[data-sym],.tab:has(>.ii){display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;text-align:left}
+.tab>.ii{grid-row:1/3;width:46px;height:46px;border-radius:14px;font-size:17px}.tab>.ii.de,.tab>.ii.uk{font-size:13px}.tab>.ii.eu,.tab>.ii.jp,.tab>.ii.gb{font-size:21px}.tab[data-sym]{column-gap:12px;padding:9px 16px 9px 10px}
+.kpi .k>span>.ii{width:38px;height:38px;border-radius:12px;font-size:15px;margin-right:10px}.kpi .k>span>.ii.de,.kpi .k>span>.ii.uk{font-size:12px}.kpi .k>span>.ii.eu,.kpi .k>span>.ii.jp,.kpi .k>span>.ii.gb{font-size:19px}
+.kpi .k>span{display:inline-flex;align-items:center}
+.phead .nm>.ii,#phName>.ii{width:38px;height:38px;border-radius:12px;margin-right:12px}
+.brow .nm>.ii{width:28px;height:28px;border-radius:9px;margin-right:10px;font-size:12px}
+.brow .nm{display:flex;align-items:center;flex-wrap:wrap}
+.brow .nm .sh,.kpi .k>em{display:none}
+.card h2{display:flex;align-items:center;gap:8px}
+/* text mai mare */
+body{font-size:16.5px;line-height:1.55}
+.nitem a{font-size:18px;line-height:1.42}
+.nitem small,.nl small{font-size:14.5px}
+.nl a{font-size:17.5px}
+.evc .ti{font-size:17px}
+.evc .t{font-size:14.5px}.evc .t b{font-size:16.5px}
+.evc .nums{font-size:14px}
+.hs,.brow small,.scn,.legend,.kpi .s{font-size:14.5px}
+.card h2{font-size:14.5px}
+.verdict p,.alert,.note,ul.why,details,.hs{font-size:15.5px}
+.verdict h3{font-size:18px}
+.tab .n{font-size:15px}.tab .p{font-size:14.5px}.tab .p i{font-size:13.5px}
+.tf,.btn,.tool,.ctl,.ctl button,.ctl select{font-size:15px}
+.status,.readout,.stat .k,.form label,.chip,.mini,.ch,.gr,.arrow,.meterlab{font-size:14px}
+.kpi .k{font-size:13px}
+.strip .kpi .v{font-size:23px}
+.strip .chg{font-size:13.5px}
+.stat .v{font-size:21px}
+td,th{font-size:15.5px}
+.tabbar a{font-size:12.5px!important}
+.brand small{font-size:12.5px}
+@media (max-width:760px){body{font-size:17px}.nitem a{font-size:18.5px}}
+/* pagina pe toata latimea */
+:root{--gut:clamp(16px,2vw,36px)}
+@media (max-width:760px){:root{--gut:12px}}
+body{max-width:none!important;padding-inline:var(--gut)!important}
+.top{margin-inline:calc(-1*var(--gut))!important;padding-inline:var(--gut)!important}
+</style>
+<style id="pf-css">
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}.seg button{border-radius:999px;padding:8px 16px}.seg button.on{border-color:var(--gold1);background:var(--tabon);color:var(--text)}
+.two{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px}@media(max-width:860px){.two{grid-template-columns:1fr}}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;border:.5px solid var(--line2);font-size:12px;color:var(--muted)}
+.pill.g{color:var(--up);border-color:color-mix(in srgb,var(--up) 45%,transparent)}.pill.r{color:var(--down);border-color:color-mix(in srgb,var(--down) 45%,transparent)}.pill.y{color:var(--warn)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);margin-top:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+svg text{fill:var(--muted);font:11px var(--font)}
+.warnbox{border:.5px solid color-mix(in srgb,var(--warn) 50%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent);border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.5}
+.wt{font:600 15px var(--mono)}.ctx .v{font-size:20px}
+ul.cl{margin:6px 0 0;padding-left:18px;line-height:1.55;font-size:14px}ul.cl li{margin:3px 0}
+td small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin-top:2px}
+</style></head><body><nav class="tabbar"><a href="/"><b>◧</b>Acasă</a><a href="/ma"><b>≈</b>MA · RSI</a><a href="/fvg"><b>◈</b>FVG · MSS</a><a href="/portofoliu" class="on"><b>◔</b>Portofoliu</a></nav>
+<header class="top"><div class="brand">Altrix<small>Portofoliu · investiții pe termen mediu și lung</small></div>
+<nav class="nav"><a href="/">Acasă</a><a href="/ma">MA · RSI · MACD</a><a href="/fvg">FVG · Lichiditate · MSS</a><a href="/portofoliu" aria-current="page">Portofoliu</a></nav>
+<div class="muted" style="margin-left:auto;font-size:12px">analiză din 30 oct 2026</div></header>
+
+<p class="warnbox" style="margin-top:14px"><b>Important.</b> Este analiză educațională, nu sfat financiar personalizat. Randamentele „avute" sunt istorice (2007–2024, aproximative, rotunjite) și nu garantează nimic în viitor. Orice portofoliu poate pierde bani, inclusiv −20% într-un an prost.</p>
+
+<h2>Contextul de acum</h2>
+<div class="grid ctx">
+<div class="card"><div class="k">S&amp;P 500 (SPY)</div><div class="v">769</div><div class="sub">aproape de maxime · <span class="up">+12,8% de la începutul anului</span> (preț)</div></div>
+<div class="card"><div class="k">Randament Treasury 10 ani</div><div class="v">4,99%</div><div class="sub">sept. 2026 · era 4,14% în dec. 2025 → <span class="down">dobânzile au urcat</span></div></div>
+<div class="card"><div class="k">Aur (XAU/USD)</div><div class="v">3.984</div><div class="sub">în jur de 4.390 la începutul anului · <span class="warn">corecție ~9%</span></div></div>
+<div class="card"><div class="k">Inflație</div><div class="v" style="font-size:16px">PCE iulie peste estimări</div><div class="sub">inflația rămâne „lipicioasă" → Fed nu se grăbește cu reducerile</div></div>
+</div>
+<div class="card"><b>Ce înseamnă pentru portofoliu:</b>
+<ul class="cl">
+<li><b>Acțiunile sunt scumpe și la maxime</b> → nu merg „all-in"; păstrăm o plasă de siguranță (aur + obligațiuni).</li>
+<li><b>Dobânzile lungi au urcat</b> → obligațiunile pe 20+ ani (TLT) sunt riscante la o nouă creștere de rate; le-am redus și am pus accent pe 7–10 ani (IEF), care acum plătesc ~5%.</li>
+<li><b>Inflație lipicioasă</b> → aurul rămâne protecția clasică, iar corecția recentă îl face mai ieftin decât acum 9 luni, dar fără garanția unui rebound.</li>
+<li><b>Concentrare în tehnologia americană</b> → o limităm (Nasdaq 20% din total) și adăugăm piețe emergente.</li>
+</ul></div>
+
+<h2>Portofoliul construit</h2>
+<div class="seg" id="seg"></div>
+<div class="two">
+ <div class="card"><div class="k" id="pname"></div><div id="pdesc" class="sub" style="margin-bottom:8px"></div>
+  <div class="tbl"><table id="alloc"></table></div></div>
+ <div class="card"><div style="display:flex;justify-content:center"><svg id="donut" viewBox="0 0 200 200" width="230" height="230" role="img" aria-label="Alocare"></svg></div><div class="legend" id="dleg"></div></div>
+</div>
+
+<div class="grid" id="kpis" style="margin-top:14px"></div>
+
+<h2>Ce ar fi făcut 100 investiți în 2007 (rebalansare anuală)</h2>
+<div class="card"><svg id="eq" viewBox="0 0 700 280" width="100%" role="img" aria-label="Evoluția a 100 investiți"></svg><div class="legend" id="eleg"></div></div>
+<p class="note">Fără costuri, taxe și curs valutar. Anii 2025–2026 nu sunt în calcul (nu am putut verifica toate seriile); S&amp;P 500 a făcut ~+17,7% în 2025 și ~+13% în 2026 până acum.</p>
+
+<h2>Randament pe ani</h2>
+<div class="card tbl"><table id="yrs"></table></div>
+
+<h2>Riscurile reale ale acestui portofoliu</h2>
+<div class="card"><ul class="cl">
+<li><b>Anul de tip 2022</b> (inflație + dobânzi în creștere): acțiunile și obligațiunile scad împreună. Aurul a ținut aproape de zero. Acesta e scenariul cel mai periculos acum.</li>
+<li><b>Criză de acțiuni</b> (2008): partea de acțiuni a pierdut ~40–50%, portofoliul întreg mult mai puțin datorită aurului și obligațiunilor.</li>
+<li><b>Aur în scădere lungă</b> (2013–2015: −40% cumulat): 20% aur poate frâna randamentul ani la rând.</li>
+<li><b>Concentrare SUA</b>: ~60% din portofoliul „Creștere" depinde de piața americană și de dolar.</li>
+<li><b>Curs valutar</b>: dacă investești din RON/EUR, o scădere a dolarului reduce randamentul în moneda ta.</li>
+<li><b>Comportament</b>: riscul numărul unu e să vinzi în panică la −20%. Dacă nu poți suporta asta, alege „Ancora".</li>
+</ul></div>
+
+<h2>Cum îl ții (reguli simple)</h2>
+<div class="card"><ul class="cl">
+<li><b>Orizont:</b> minim 5–10 ani. Nu pune bani de care ai nevoie în 2 ani.</li>
+<li><b>Intrare:</b> eșalonat (ex. 6–12 tranșe lunare), nu totul într-o zi.</li>
+<li><b>Rebalansare:</b> o dată pe an sau când o poziție se abate cu 5 puncte procentuale de la țintă.</li>
+<li><b>Fără levier</b> pe această parte. Trading-ul tău (FTMO) rămâne separat de banii investiți.</li>
+<li><b>ETF-uri UCITS</b> (cele din coloana „Echivalent UE"): ca investitor din UE nu poți cumpăra de regulă SPY, QQQ etc. Verifică ISIN-ul și costurile la brokerul tău.</li>
+</ul></div>
+
+<h2>De unde vine ideea (portofolii celebre)</h2>
+<div class="card tbl"><table>
+<tr><th>Model</th><th>Idee</th><th>Ce am luat</th></tr>
+<tr><td>Ray Dalio · All Weather</td><td>Echilibrează riscul pe 4 scenarii (creștere, recesiune, inflație, deflație): ~30% acțiuni, 55% obligațiuni, 15% aur/mărfuri</td><td>Aur + obligațiuni ca plasă, pe toate regimurile</td></tr>
+<tr><td>Harry Browne · Permanent Portfolio</td><td>25% acțiuni, 25% obligațiuni lungi, 25% aur, 25% cash</td><td>Aurul ca pilon real, nu simplu „extra"</td></tr>
+<tr><td>David Swensen · Yale Endowment</td><td>Diversificare agresivă, mult capital în active de creștere, rebalansare disciplinată</td><td>Piețe emergente + rebalansare strictă</td></tr>
+<tr><td>Warren Buffett / Bogle</td><td>Indice larg, costuri mici, răbdare</td><td>Nucleul din S&amp;P 500, ETF-uri ieftine</td></tr>
+</table></div>
+
+<h2>Idei care NU sunt în portofoliu (de cercetat)</h2>
+<div class="card tbl"><table>
+<tr><th>Idee</th><th>De ce ar putea avea potențial</th><th>Riscul principal</th></tr>
+<tr><td>Microsoft (MSFT)<small>acțiune</small></td><td>Calitate înaltă, flux de numerar mare, AI + cloud</td><td>Evaluare ridicată, deja în S&amp;P/Nasdaq (dublă expunere)</td></tr>
+<tr><td>ASML (ASML)<small>acțiune, Europa</small></td><td>Monopol pe litografia avansată, esențială pentru cipuri</td><td>Ciclul semiconductorilor, restricții de export</td></tr>
+<tr><td>Berkshire Hathaway (BRK.B)<small>acțiune</small></td><td>Cash uriaș, calitate, comportament defensiv în corecții</td><td>Randament istoric mai mic în rally-uri tech</td></tr>
+<tr><td>Argint (SLV)<small>metal</small></td><td>Cerere industrială + rol de rezervă; rămâne în urma aurului în unele cicluri</td><td>Volatilitate dublă față de aur</td></tr>
+<tr><td>Cupru / minerit (COPX, FCX)<small>mărfuri</small></td><td>Electrificare, rețele, centre de date</td><td>Foarte ciclic, dependent de China</td></tr>
+<tr><td>Uraniu / nuclear (URA)<small>temă</small></td><td>Cerere de energie pentru AI și centrale noi</td><td>Volatilitate extremă, risc politic</td></tr>
+<tr><td>India (INDA)<small>indice</small></td><td>Demografie și creștere economică ridicate</td><td>Evaluări mari, risc valutar</td></tr>
+<tr><td>Japonia (EWJ)<small>indice</small></td><td>Reforme corporative, răscumpărări de acțiuni</td><td>Yen volatil, sensibil la dobânzi</td></tr>
+<tr><td>Forex (ex. USD/CHF, EUR/USD)<small>valută</small></td><td>Nu am inclus: forex nu generează randament pe termen lung, e joc de sumă zero</td><td>Rămâne zona ta de trading, nu de investiție</td></tr>
+</table></div>
+<p class="note">Nu sunt recomandări de cumpărare. Sunt direcții de studiat; fiecare s-ar adăuga doar în mici proporții (1–3%), din „partea de creștere", nu din plasa de siguranță.</p>
+
+<h2>Metodă și limite (cinstit)</h2>
+<div class="card"><ul class="cl">
+<li>Randamentele anuale 2007–2024 sunt randamente totale aproximative (rotunjite) ale ETF-urilor SPY, QQQ, EEM, GLD, IEF, TLT și ale ratelor la bonuri de trezorerie, introduse manual; nu am putut reverifica fiecare cifră live (sursele de date pe care le-am avut au limită de cereri). Tratează diferențe de ±1–2 puncte ca posibile.</li>
+<li>Datele live verificate: SPY (serie lunară), randamentul Treasury 10 ani, aurul spot.</li>
+<li>„All Weather" aici e o aproximare cu ETF-uri (30% SPY, 40% TLT, 15% IEF, 15% GLD), nu portofoliul real al lui Dalio.</li>
+<li>Căderea maximă e calculată pe date anuale; pe date zilnice ar fi mai adâncă.</li>
+<li>Estimare prudentă pentru viitor, <b>nu promisiune</b>: pentru „Creștere" un interval realist e ~5–9% pe an nominal, cu ani negativi inevitabili.</li>
+</ul></div>
+<p class="note">Surse: date lunare Alpha Vantage (SPY), Treasury 10Y și aur spot Alpha Vantage; context macro: fxstreet, cryptobriefing (PCE iulie 2026).</p>
+
+<script>
+const D={"years": [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024], "p": {"Altrix Ancora": {"cagr": 8.2, "vol": 10.3, "mdd": -14.3, "worst": -14.3, "best": 20.4, "neg": 4, "sharpe": 0.7, "ser": [14.4, -11.5, 19.7, 15.7, 6.9, 9.7, 5.7, 8.6, -1.4, 6.8, 15.3, -2.2, 20.4, 19.4, 9.6, -14.3, 17.9, 15.7], "eq": [114.4, 101.3, 121.2, 140.3, 149.9, 164.4, 173.8, 188.7, 186.2, 198.8, 229.1, 224.1, 269.8, 322.1, 352.8, 302.4, 356.5, 412.4]}, "Altrix Creștere": {"cagr": 10.3, "vol": 14.2, "mdd": -21.3, "worst": -21.3, "best": 28.5, "neg": 4, "sharpe": 0.69, "ser": [15.4, -21.3, 28.5, 18.3, 5.8, 12.7, 13.2, 11.0, -0.4, 8.5, 20.4, -3.0, 26.3, 25.0, 15.5, -18.0, 25.1, 20.3], "eq": [115.4, 90.8, 116.6, 138.0, 145.9, 164.5, 186.2, 206.6, 205.7, 223.3, 268.8, 260.8, 329.5, 411.8, 475.4, 389.7, 487.4, 586.4]}, "S&P 500": {"cagr": 10.3, "vol": 18.2, "mdd": -36.8, "worst": -36.8, "best": 32.3, "neg": 3, "sharpe": 0.57, "ser": [5.1, -36.8, 26.4, 15.1, 1.9, 16.0, 32.3, 13.5, 1.2, 12.0, 21.7, -4.6, 31.2, 18.4, 28.7, -18.2, 26.2, 24.9], "eq": [105.1, 66.4, 84.0, 96.6, 98.5, 114.2, 151.1, 171.5, 173.6, 194.4, 236.6, 225.7, 296.1, 350.6, 451.3, 369.1, 465.8, 581.8]}, "60/40": {"cagr": 8.0, "vol": 10.7, "mdd": -16.9, "worst": -16.9, "best": 22.2, "neg": 3, "sharpe": 0.67, "ser": [6.9, -14.8, 13.2, 12.8, 7.6, 11.0, 16.9, 11.7, 1.3, 7.6, 14.1, -2.4, 22.2, 15.4, 16.0, -16.9, 17.4, 14.7], "eq": [106.9, 91.0, 103.1, 116.3, 125.1, 138.9, 162.5, 181.5, 183.9, 197.9, 225.7, 220.3, 269.1, 310.5, 360.2, 299.3, 351.4, 402.9]}, "All Weather (aprox.)": {"cagr": 6.8, "vol": 9.7, "mdd": -20.3, "worst": -20.3, "best": 19.0, "neg": 4, "sharpe": 0.59, "ser": [11.5, 5.9, 1.8, 13.9, 18.0, 7.4, -0.8, 16.0, -1.7, 5.5, 12.5, -2.2, 19.0, 18.2, 5.7, -20.3, 11.6, 8.1], "eq": [111.5, 118.1, 120.3, 137.0, 161.8, 173.7, 172.3, 199.8, 196.4, 207.1, 233.0, 227.9, 271.2, 320.4, 338.7, 269.9, 301.3, 325.7]}}};
+const $=id=>document.getElementById(id);
+const META={SPY:['S&P 500','SPY','CSPX / VUAA','Nucleul de creștere: 500 de companii mari americane'],QQQ:['Nasdaq 100','QQQ','CNDX / EQQQ','Tehnologie și AI, mai volatil'],EEM:['Piețe emergente','EEM','EIMI','Diversificare în afara SUA'],GLD:['Aur','GLD','SGLN / 4GLD','Protecție la inflație și crize'],IEF:['Trezorerie SUA 7–10 ani','IEF','IBTM','Randament ~5% și plasă la recesiune'],TLT:['Trezorerie SUA 20+ ani','TLT','IDTL','Câștigă mult când dobânzile scad'],CASH:['Cash / bonuri trezorerie','SGOV','XEON','Liniște și muniție pentru oportunități']};
+const PF={'Altrix Creștere':{w:{SPY:40,QQQ:20,EEM:5,GLD:20,IEF:10,TLT:5},d:'Echilibrul recomandat: creștere ca S&P 500, dar cu pierderi mult mai mici în crize.'},
+'Altrix Ancora':{w:{SPY:30,QQQ:10,EEM:5,GLD:20,IEF:20,TLT:5,CASH:10},d:'Versiunea prudentă: dormi liniștit, randament mai mic, căderi mici.'}};
+const COL={SPY:'#5ad8f5',QQQ:'#8ea2ff',EEM:'#ff8ad0',GLD:'#f5d68a',IEF:'#4fe08a',TLT:'#2fae7a',CASH:'#9aa6bd'};
+const LC={'Altrix Creștere':'#f5d68a','Altrix Ancora':'#4fe08a','S&P 500':'#5ad8f5','60/40':'#ff8ad0','All Weather (aprox.)':'#9aa6bd'};
+let cur='Altrix Creștere';
+const f1=x=>(x>0?'+':'')+String(x).replace('.',',');
+function seg(){$('seg').innerHTML=Object.keys(PF).map(k=>'<button class="'+(k===cur?'on':'')+'" data-k="'+k+'">'+k.replace('Altrix ','')+(k===cur?'':'')+'</button>').join('');
+ $('seg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cur=b.dataset.k;draw()})}
+function donut(w){let a=-Math.PI/2,s='',cx=100,cy=100,R=84,r=52;
+ Object.entries(w).forEach(([k,v])=>{const b=a+v/100*2*Math.PI,l=v>50?1:0;
+  const p=(R_,t)=>[cx+R_*Math.cos(t),cy+R_*Math.sin(t)];const A=p(R,a),B=p(R,b),C=p(r,b),E=p(r,a);
+  s+='<path d="M'+A+' A'+R+' '+R+' 0 '+l+' 1 '+B+' L'+C+' A'+r+' '+r+' 0 '+l+' 0 '+E+'Z" fill="'+COL[k]+'" stroke="var(--bg)" stroke-width="2"/>';a=b});
+ $('donut').innerHTML=s+'<text x="100" y="98" text-anchor="middle" style="font:600 20px var(--font);fill:var(--text)">100%</text><text x="100" y="116" text-anchor="middle">alocare</text>';
+ $('dleg').innerHTML=Object.keys(w).map(k=>'<span><i style="background:'+COL[k]+'"></i>'+META[k][0]+' '+w[k]+'%</span>').join('')}
+function draw(){seg();const p=PF[cur],w=p.w,s=D.p[cur];
+ $('pname').textContent=cur;$('pdesc').textContent=p.d;
+ $('alloc').innerHTML='<tr><th>Activ</th><th class="n">Pondere</th><th>Echivalent UE</th></tr>'+Object.entries(w).map(([k,v])=>'<tr><td><span class="pill" style="border-color:'+COL[k]+'">'+META[k][1]+'</span> '+META[k][0]+'<small>'+META[k][3]+'</small></td><td class="n wt">'+v+'%</td><td>'+META[k][2]+'</td></tr>').join('');
+ donut(w);
+ const k=[['Randament mediu / an',String(s.cagr).replace('.',',')+'%','2007–2024 (compus)','up'],['Volatilitate',String(s.vol).replace('.',',')+'%','abatere anuală',''],['Cădere maximă',String(s.mdd).replace('.',',')+'%','cel mai prost an','down'],['Cel mai bun an',f1(s.best)+'%','',''],['Ani negativi',s.neg+' din 18','',''],['Raport randament/risc',String(s.sharpe).replace('.',','),'peste 1,5% fără risc','']];
+ $('kpis').innerHTML=k.map(x=>'<div class="card"><div class="k">'+x[0]+'</div><div class="v '+x[3]+'">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>').join('');
+ eq();yrs()}
+function eq(){const names=Object.keys(D.p),Y=D.years;let mx=0;names.forEach(n=>D.p[n].eq.forEach(v=>mx=Math.max(mx,v)));
+ const W=700,H=280,l=40,r=10,t=10,b=24,X=i=>l+(W-l-r)*i/(Y.length-1),V=v=>H-b-(H-b-t)*Math.log(v/60)/Math.log(mx*1.05/60);
+ let s='';[100,200,400,800].filter(v=>v<mx).forEach(v=>{s+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+V(v)+'" y2="'+V(v)+'" stroke="var(--line)"/><text x="4" y="'+(V(v)+4)+'">'+v+'</text>'});
+ Y.forEach((y,i)=>{if(i%3==0||i==Y.length-1)s+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="middle">'+y+'</text>'});
+ names.forEach(n=>{const e=[100].concat(D.p[n].eq);const pts=e.map((v,i)=>[l+(W-l-r)*i/(e.length-1),V(v)]);
+  const hi=n===cur;s+='<polyline fill="none" stroke="'+LC[n]+'" stroke-width="'+(hi?3:1.6)+'" opacity="'+(hi?1:.7)+'" stroke-linejoin="round" points="'+pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'"/>'});
+ $('eq').innerHTML=s;
+ $('eleg').innerHTML=names.map(n=>'<span><i style="background:'+LC[n]+'"></i>'+n+' · '+D.p[n].cagr+'%/an · cădere '+D.p[n].mdd+'%</span>').join('')}
+function yrs(){const names=Object.keys(D.p);
+ $('yrs').innerHTML='<tr><th>An</th>'+names.map(n=>'<th class="n">'+n.replace('Altrix ','A. ')+'</th>').join('')+'</tr>'+D.years.map((y,i)=>'<tr><td>'+y+'</td>'+names.map(n=>{const v=D.p[n].ser[i];return '<td class="n '+(v<0?'down':'up')+'">'+f1(v)+'%</td>'}).join('')+'</tr>').join('')}
+draw();
+</script>
+<script id="altrix-v3js">
+(function(){
+var P={'/':['M5 12l-2 0l9 -9l9 9l-2 0M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6','#f1f4fa','#9aa6bd'],
+'/ma':['M4 19l16 0M4 15l4 -6l4 2l4 -5l4 4','#5ad8f5','#0c8fb8'],
+'/fvg':['M6 5h12l3 5l-8.5 9.5a.7 .7 0 0 1 -1 0l-8.5 -9.5l3 -5','#ff8ad0','#d9308f'],
+'/portofoliu':['M12 3v9h9M20.5 14a8.5 8.5 0 1 1 -10.5 -10.5','#ffd27a','#e0881f'],
+'/lab':['M9 3l6 0M10 9l4 0M10 3v6l-4 11a.7 .7 0 0 0 .5 1h11a.7 .7 0 0 0 .5 -1l-4 -11v-6','#b6e65a','#52a31c']};
+function run(){document.querySelectorAll('.nav a,.tabbar a').forEach(function(a){
+ if(a.querySelector('.v3i'))return;var m=P[a.getAttribute('href')];if(!m)return;
+ var b=a.querySelector('b');if(b)b.remove();
+ a.insertAdjacentHTML('afterbegin','<span class="v3i" aria-hidden="true" style="--c1:'+m[1]+';--c2:'+m[2]+(a.getAttribute('href')==='/'?';color:#1b2433':'')+'"><svg viewBox="0 0 24 24"><path d="'+m[0]+'"/></svg></span>');});}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
+})();
+(function(){
+var G={au:'Au',eu:'€',jp:'¥',de:'DAX',nk:'',gb:'£',uk:'UK'};
+function kind(t){t=(t||'').toLowerCase();
+ if(/aur|xau|gold/.test(t))return'au';if(/eur\/?usd/.test(t))return'eu';if(/usd\/?jpy/.test(t))return'jp';
+ if(/dax|ger40/.test(t))return'de';if(/nikkei|n225|jp225/.test(t))return'nk';if(/gbp\/?usd/.test(t))return'gb';if(/uk100|ftse/.test(t))return'uk';return''}
+function mk(k){var s=document.createElement('span');s.className='ii '+k;s.setAttribute('aria-hidden','true');s.textContent=G[k];return s}
+function addTo(host,labelEl,target){if(!host||host.querySelector(':scope>.ii,:scope>span>.ii'))return;
+ var k=kind(labelEl.textContent);if(!k)return;target.insertBefore(mk(k),target.firstChild)}
+var q=0;function run(){q=0;
+ document.querySelectorAll('.tab[data-sym]').forEach(function(t){var n=t.querySelector('.n');if(n&&!t.querySelector(':scope>.ii')){var k=kind(n.textContent);if(k)t.insertBefore(mk(k),t.firstChild)}});
+ document.querySelectorAll('.kpi .k>span:first-child').forEach(function(s){if(!s.querySelector('.ii')){var k=kind(s.textContent);if(k)s.insertBefore(mk(k),s.firstChild)}});
+ document.querySelectorAll('.brow .nm').forEach(function(s){if(!s.querySelector(':scope>.ii')){var k=kind(s.firstChild&&s.firstChild.textContent);if(k)s.insertBefore(mk(k),s.firstChild)}});
+ document.querySelectorAll('#phName').forEach(function(s){if(!s.querySelector(':scope>.ii')){var k=kind(s.textContent);if(k)s.insertBefore(mk(k),s.firstChild)}});}
+function sched(){if(!q){q=1;requestAnimationFrame(run)}}
+function start(){run();new MutationObserver(sched).observe(document.body,{childList:true,subtree:true})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+</body></html>

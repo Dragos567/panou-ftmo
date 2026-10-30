@@ -461,7 +461,7 @@ LOGIN = """<!doctype html><meta charset=utf-8><meta name=viewport content="width
 <input name=k type=password autofocus autocomplete=current-password placeholder="Cod de acces" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #1c2530;background:#0f151c;color:inherit;font-size:16px">
 <button style="width:100%;margin-top:10px;padding:12px;border-radius:8px;border:0;background:#e0a93b;color:#15110a;font-weight:600;font-size:16px">Intră</button>@@ERR@@</form></body>"""
 STATIC = ["manifest.webmanifest", "sw.js", "icon-180.png", "icon-192.png", "icon-512.png", "favicon.png"]
-PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html", "/lab": "lab.html", "/chei": "chei.html", "/cont": "cont.html"}
+PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html", "/lab": "lab.html", "/portofoliu": "portofoliu.html", "/chei": "chei.html", "/cont": "cont.html"}
 RUN = {"p": None}
 def run_probe():
     if RUN["p"] and RUN["p"].poll() is None: return False
@@ -894,7 +894,7 @@ def migrate():
             t = t.replace("Panou Trading Personal", "Altrix").replace("Panou Trading", "Altrix").replace("Panou FTMO", "Altrix")
             t = t.replace('<div class="brand">Panou FTMO<small>', '<div class="brand">Altrix<small>')
             t = t.replace('<div class="brand">Trading<small>', '<div class="brand">Altrix<small>')
-            if 'href="/lab"' not in t:
+            if 'href="/lab"' not in t and 'href="/portofoliu"' not in t:
                 t = t.replace('<a href="/fvg" data-p="/fvg"><b>◈</b>FVG · MSS</a></nav>', '<a href="/fvg" data-p="/fvg"><b>◈</b>FVG · MSS</a><a href="/lab" data-p="/lab"><b>⚗</b>Laborator</a></nav>')
                 t = t.replace('<a href="/fvg">FVG · Lichiditate · MSS</a></nav>', '<a href="/fvg">FVG · Lichiditate · MSS</a><a href="/lab">Laborator</a></nav>')
                 t = t.replace('<a href="/fvg" aria-current="page">FVG · Lichiditate · MSS</a></nav>', '<a href="/fvg" aria-current="page">FVG · Lichiditate · MSS</a><a href="/lab">Laborator</a></nav>')

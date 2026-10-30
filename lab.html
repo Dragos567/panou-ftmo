@@ -170,9 +170,9 @@ body{max-width:none!important;padding-inline:var(--gut)!important}
 .top{margin-inline:calc(-1*var(--gut))!important;padding-inline:var(--gut)!important}
 </style>
 </head><body>
-<nav class="tabbar"><a href="/"><b>◧</b>Acasă</a><a href="/ma"><b>≈</b>MA · RSI</a><a href="/fvg"><b>◈</b>FVG · MSS</a><a href="/lab" class="on"><b>⚗</b>Laborator</a></nav>
+<nav class="tabbar"><a href="/"><b>◧</b>Acasă</a><a href="/ma"><b>≈</b>MA · RSI</a><a href="/fvg"><b>◈</b>FVG · MSS</a><a href="/portofoliu"><b>◔</b>Portofoliu</a></nav>
 <header class="top"><div class="brand">Altrix<small>Laborator · strategia LIQ pe DAX (GER40)</small></div>
-<nav class="nav"><a href="/">Acasă</a><a href="/ma">MA · RSI · MACD</a><a href="/fvg">FVG · Lichiditate · MSS</a><a href="/lab" aria-current="page">Laborator</a></nav>
+<nav class="nav"><a href="/">Acasă</a><a href="/ma">MA · RSI · MACD</a><a href="/fvg">FVG · Lichiditate · MSS</a><a href="/portofoliu">Portofoliu</a></nav>
 <div class="muted" id="upd" style="margin-left:auto;font-size:12px">…</div></header>
 
 <div class="grid" id="top"></div>
@@ -260,6 +260,7 @@ load();setInterval(()=>load(),1500);
 var P={'/':['M5 12l-2 0l9 -9l9 9l-2 0M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6','#f1f4fa','#9aa6bd'],
 '/ma':['M4 19l16 0M4 15l4 -6l4 2l4 -5l4 4','#5ad8f5','#0c8fb8'],
 '/fvg':['M6 5h12l3 5l-8.5 9.5a.7 .7 0 0 1 -1 0l-8.5 -9.5l3 -5','#ff8ad0','#d9308f'],
+'/portofoliu':['M12 3v9h9M20.5 14a8.5 8.5 0 1 1 -10.5 -10.5','#ffd27a','#e0881f'],
 '/lab':['M9 3l6 0M10 9l4 0M10 3v6l-4 11a.7 .7 0 0 0 .5 1h11a.7 .7 0 0 0 .5 -1l-4 -11v-6','#b6e65a','#52a31c']};
 function run(){document.querySelectorAll('.nav a,.tabbar a').forEach(function(a){
  if(a.querySelector('.v3i'))return;var m=P[a.getAttribute('href')];if(!m)return;
