@@ -72,6 +72,8 @@ def bases():
 def iso(t): return t.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 def parse_t(s): return int(dt.datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=dt.timezone.utc).timestamp())
 def fetch_candles(sym, tf, before=None, limit=1000, bulk=False):
+    if bulk and time.time() - STAT["started"] > 240 and time.time() - STAT.get("q_ok", 0) > 180:
+        raise RuntimeError("descarcarea istoricului asteapta: cotatiile live nu raspund (contul nu e sanatos)")     # nu bombarda un cont care nu raspunde
     _, mb = bases()
     u = "%s/users/current/accounts/%s/historical-market-data/symbols/%s/timeframes/%s/candles?limit=%d" % (mb, AID, urllib.parse.quote(SYMS.get(sym) or HSYMS.get(sym) or DSYMS[sym], safe=""), tf, limit)
     if before: u += "&startTime=" + urllib.parse.quote(iso(dt.datetime.utcfromtimestamp(before)))
@@ -210,7 +212,7 @@ def _qone(s):
             prev = prev_daily_close(s) or (prev_24h(h) if h else (_qc["v"].get(s) or {}).get("prev"))
             try: qt = parse_t(p["time"]) if p.get("time") else None
             except Exception: qt = None
-            with _ql: _qc["v"][s] = {"price": p["bid"], "prev": prev, "qt": qt, "ok": time.time()}; _qc["t"] = time.time()
+            with _ql: _qc["v"][s] = {"price": p["bid"], "prev": prev, "qt": qt, "ok": time.time()}; _qc["t"] = time.time(); STAT["q_ok"] = time.time()
             if p.get("ask") and p["ask"] >= p["bid"]: spread_add(s, p["ask"] - p["bid"])
         except Exception as e:
             if s not in _qc["v"]:
