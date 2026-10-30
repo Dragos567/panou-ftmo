@@ -216,6 +216,16 @@ td small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin
 <div class="card"><svg id="eq" viewBox="0 0 700 280" width="100%" role="img" aria-label="Evoluția a 100 investiți"></svg><div class="legend" id="eleg"></div></div>
 <p class="note">Fără costuri, taxe și curs valutar. Anii 2025–2026 nu sunt în calcul (nu am putut verifica toate seriile); S&amp;P 500 a făcut ~+17,7% în 2025 și ~+13% în 2026 până acum.</p>
 
+<h2>Calculator: cum împarți banii</h2>
+<div class="card"><div class="sub" style="margin-bottom:10px">Folosește portofoliul ales mai sus. Calculul rulează doar în browser, nu se salvează și nu se trimite nicăieri.</div>
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
+<label class="k">Suma de investit<br><input id="amt" type="number" min="0" step="any" inputmode="decimal" value="10000" style="font:600 18px var(--mono);width:150px;padding:8px 10px;border-radius:10px;border:.5px solid var(--line2);background:var(--panel);color:var(--text)"></label>
+<label class="k">Moneda<br><select id="ccy" style="font:inherit;padding:9px 10px;border-radius:10px;border:.5px solid var(--line2);background:var(--panel);color:var(--text)"><option>EUR</option><option>RON</option><option>USD</option></select></label>
+<label class="k">Tranșe lunare<br><select id="tr" style="font:inherit;padding:9px 10px;border-radius:10px;border:.5px solid var(--line2);background:var(--panel);color:var(--text)"><option value="1">1 (tot odată)</option><option value="6">6</option><option value="12" selected>12</option></select></label></div>
+<div class="tbl" style="margin-top:12px"><table id="ctab"></table></div></div>
+<h2>Rebalansare: cât ai acum față de țintă</h2>
+<div class="card"><div class="sub" style="margin-bottom:10px">Scrie cât valorează acum fiecare poziție (în aceeași monedă). Primești ce să cumperi sau să vinzi ca să revii la țintă. Se face doar la abatere ≥ 5 puncte procentuale sau o dată pe an.</div>
+<div class="tbl"><table id="rtab"></table></div><div id="rsum" class="note" style="margin-top:8px"></div></div>
 <h2>Randament pe ani</h2>
 <div class="card tbl"><table id="yrs"></table></div>
 
@@ -275,10 +285,11 @@ td small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin
 <script>
 const D={"years": [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024], "p": {"Altrix Ancora": {"cagr": 8.2, "vol": 10.3, "mdd": -14.3, "worst": -14.3, "best": 20.4, "neg": 4, "sharpe": 0.7, "ser": [14.4, -11.5, 19.7, 15.7, 6.9, 9.7, 5.7, 8.6, -1.4, 6.8, 15.3, -2.2, 20.4, 19.4, 9.6, -14.3, 17.9, 15.7], "eq": [114.4, 101.3, 121.2, 140.3, 149.9, 164.4, 173.8, 188.7, 186.2, 198.8, 229.1, 224.1, 269.8, 322.1, 352.8, 302.4, 356.5, 412.4]}, "Altrix Creștere": {"cagr": 10.3, "vol": 14.2, "mdd": -21.3, "worst": -21.3, "best": 28.5, "neg": 4, "sharpe": 0.69, "ser": [15.4, -21.3, 28.5, 18.3, 5.8, 12.7, 13.2, 11.0, -0.4, 8.5, 20.4, -3.0, 26.3, 25.0, 15.5, -18.0, 25.1, 20.3], "eq": [115.4, 90.8, 116.6, 138.0, 145.9, 164.5, 186.2, 206.6, 205.7, 223.3, 268.8, 260.8, 329.5, 411.8, 475.4, 389.7, 487.4, 586.4]}, "S&P 500": {"cagr": 10.3, "vol": 18.2, "mdd": -36.8, "worst": -36.8, "best": 32.3, "neg": 3, "sharpe": 0.57, "ser": [5.1, -36.8, 26.4, 15.1, 1.9, 16.0, 32.3, 13.5, 1.2, 12.0, 21.7, -4.6, 31.2, 18.4, 28.7, -18.2, 26.2, 24.9], "eq": [105.1, 66.4, 84.0, 96.6, 98.5, 114.2, 151.1, 171.5, 173.6, 194.4, 236.6, 225.7, 296.1, 350.6, 451.3, 369.1, 465.8, 581.8]}, "60/40": {"cagr": 8.0, "vol": 10.7, "mdd": -16.9, "worst": -16.9, "best": 22.2, "neg": 3, "sharpe": 0.67, "ser": [6.9, -14.8, 13.2, 12.8, 7.6, 11.0, 16.9, 11.7, 1.3, 7.6, 14.1, -2.4, 22.2, 15.4, 16.0, -16.9, 17.4, 14.7], "eq": [106.9, 91.0, 103.1, 116.3, 125.1, 138.9, 162.5, 181.5, 183.9, 197.9, 225.7, 220.3, 269.1, 310.5, 360.2, 299.3, 351.4, 402.9]}, "All Weather (aprox.)": {"cagr": 6.8, "vol": 9.7, "mdd": -20.3, "worst": -20.3, "best": 19.0, "neg": 4, "sharpe": 0.59, "ser": [11.5, 5.9, 1.8, 13.9, 18.0, 7.4, -0.8, 16.0, -1.7, 5.5, 12.5, -2.2, 19.0, 18.2, 5.7, -20.3, 11.6, 8.1], "eq": [111.5, 118.1, 120.3, 137.0, 161.8, 173.7, 172.3, 199.8, 196.4, 207.1, 233.0, 227.9, 271.2, 320.4, 338.7, 269.9, 301.3, 325.7]}}};
 const $=id=>document.getElementById(id);
-const META={SPY:['S&P 500','SPY','CSPX / VUAA','Nucleul de creștere: 500 de companii mari americane'],QQQ:['Nasdaq 100','QQQ','CNDX / EQQQ','Tehnologie și AI, mai volatil'],EEM:['Piețe emergente','EEM','EIMI','Diversificare în afara SUA'],GLD:['Aur','GLD','SGLN / 4GLD','Protecție la inflație și crize'],IEF:['Trezorerie SUA 7–10 ani','IEF','IBTM','Randament ~5% și plasă la recesiune'],TLT:['Trezorerie SUA 20+ ani','TLT','IDTL','Câștigă mult când dobânzile scad'],CASH:['Cash / bonuri trezorerie','SGOV','XEON','Liniște și muniție pentru oportunități']};
+const META={SPY:['S&P 500','SPY','CSPX / VUAA','Nucleul de creștere: 500 de companii mari americane'],QQQ:['Nasdaq 100','QQQ','CNDX / EQQQ','Tehnologie și AI, mai volatil'],EEM:['Piețe emergente','EEM','EIMI','Diversificare în afara SUA'],GLD:['Aur','GLD','SGLN / 4GLD','Protecție la inflație și crize'],IEF:['Trezorerie SUA 7–10 ani','IEF','IBTM','Randament ~5% și plasă la recesiune'],TLT:['Trezorerie SUA 20+ ani','TLT','IDTL','Câștigă mult când dobânzile scad'],DBC:['Mărfuri diversificate','DBC','CMOD / ICOM','Energie, metale, agricole: protecție la inflație'],CASH:['Cash / bonuri trezorerie','SGOV','XEON','Liniște și muniție pentru oportunități']};
 const PF={'Altrix Creștere':{w:{SPY:40,QQQ:20,EEM:5,GLD:20,IEF:10,TLT:5},d:'Echilibrul recomandat: creștere ca S&P 500, dar cu pierderi mult mai mici în crize.'},
+'Dalio · All Weather':{bt:'All Weather (aprox.)',w:{SPY:30,TLT:40,IEF:15,GLD:7.5,DBC:7.5},d:'Portofoliul lui Ray Dalio, în forma lui clasică: echilibrat pe 4 scenarii economice. Atenție: azi, cu dobânzile în creștere, partea de obligațiuni lungi (40%) e punctul slab.'},
 'Altrix Ancora':{w:{SPY:30,QQQ:10,EEM:5,GLD:20,IEF:20,TLT:5,CASH:10},d:'Versiunea prudentă: dormi liniștit, randament mai mic, căderi mici.'}};
-const COL={SPY:'#5ad8f5',QQQ:'#8ea2ff',EEM:'#ff8ad0',GLD:'#f5d68a',IEF:'#4fe08a',TLT:'#2fae7a',CASH:'#9aa6bd'};
+const COL={DBC:'#ff9f5a',SPY:'#5ad8f5',QQQ:'#8ea2ff',EEM:'#ff8ad0',GLD:'#f5d68a',IEF:'#4fe08a',TLT:'#2fae7a',CASH:'#9aa6bd'};
 const LC={'Altrix Creștere':'#f5d68a','Altrix Ancora':'#4fe08a','S&P 500':'#5ad8f5','60/40':'#ff8ad0','All Weather (aprox.)':'#9aa6bd'};
 let cur='Altrix Creștere';
 const f1=x=>(x>0?'+':'')+String(x).replace('.',',');
@@ -290,23 +301,33 @@ function donut(w){let a=-Math.PI/2,s='',cx=100,cy=100,R=84,r=52;
   s+='<path d="M'+A+' A'+R+' '+R+' 0 '+l+' 1 '+B+' L'+C+' A'+r+' '+r+' 0 '+l+' 0 '+E+'Z" fill="'+COL[k]+'" stroke="var(--bg)" stroke-width="2"/>';a=b});
  $('donut').innerHTML=s+'<text x="100" y="98" text-anchor="middle" style="font:600 20px var(--font);fill:var(--text)">100%</text><text x="100" y="116" text-anchor="middle">alocare</text>';
  $('dleg').innerHTML=Object.keys(w).map(k=>'<span><i style="background:'+COL[k]+'"></i>'+META[k][0]+' '+w[k]+'%</span>').join('')}
-function draw(){seg();const p=PF[cur],w=p.w,s=D.p[cur];
+function draw(){seg();const p=PF[cur],w=p.w,s=D.p[p.bt||cur];
  $('pname').textContent=cur;$('pdesc').textContent=p.d;
  $('alloc').innerHTML='<tr><th>Activ</th><th class="n">Pondere</th><th>Echivalent UE</th></tr>'+Object.entries(w).map(([k,v])=>'<tr><td><span class="pill" style="border-color:'+COL[k]+'">'+META[k][1]+'</span> '+META[k][0]+'<small>'+META[k][3]+'</small></td><td class="n wt">'+v+'%</td><td>'+META[k][2]+'</td></tr>').join('');
  donut(w);
  const k=[['Randament mediu / an',String(s.cagr).replace('.',',')+'%','2007–2024 (compus)','up'],['Volatilitate',String(s.vol).replace('.',',')+'%','abatere anuală',''],['Cădere maximă',String(s.mdd).replace('.',',')+'%','cel mai prost an','down'],['Cel mai bun an',f1(s.best)+'%','',''],['Ani negativi',s.neg+' din 18','',''],['Raport randament/risc',String(s.sharpe).replace('.',','),'peste 1,5% fără risc','']];
  $('kpis').innerHTML=k.map(x=>'<div class="card"><div class="k">'+x[0]+'</div><div class="v '+x[3]+'">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>').join('');
- eq();yrs()}
+ $('kpis').insertAdjacentHTML('beforeend',p.bt?'<div class="note" style="grid-column:1/-1">Statisticile sunt ale aproximării fără mărfuri (cele 7,5% DBC nu au serie istorică în calcul).</div>':'');eq();yrs();calc()}
 function eq(){const names=Object.keys(D.p),Y=D.years;let mx=0;names.forEach(n=>D.p[n].eq.forEach(v=>mx=Math.max(mx,v)));
  const W=700,H=280,l=40,r=10,t=10,b=24,X=i=>l+(W-l-r)*i/(Y.length-1),V=v=>H-b-(H-b-t)*Math.log(v/60)/Math.log(mx*1.05/60);
  let s='';[100,200,400,800].filter(v=>v<mx).forEach(v=>{s+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+V(v)+'" y2="'+V(v)+'" stroke="var(--line)"/><text x="4" y="'+(V(v)+4)+'">'+v+'</text>'});
  Y.forEach((y,i)=>{if(i%3==0||i==Y.length-1)s+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="middle">'+y+'</text>'});
  names.forEach(n=>{const e=[100].concat(D.p[n].eq);const pts=e.map((v,i)=>[l+(W-l-r)*i/(e.length-1),V(v)]);
-  const hi=n===cur;s+='<polyline fill="none" stroke="'+LC[n]+'" stroke-width="'+(hi?3:1.6)+'" opacity="'+(hi?1:.7)+'" stroke-linejoin="round" points="'+pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'"/>'});
+  const hi=n===(PF[cur].bt||cur);s+='<polyline fill="none" stroke="'+LC[n]+'" stroke-width="'+(hi?3:1.6)+'" opacity="'+(hi?1:.7)+'" stroke-linejoin="round" points="'+pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'"/>'});
  $('eq').innerHTML=s;
  $('eleg').innerHTML=names.map(n=>'<span><i style="background:'+LC[n]+'"></i>'+n+' · '+D.p[n].cagr+'%/an · cădere '+D.p[n].mdd+'%</span>').join('')}
 function yrs(){const names=Object.keys(D.p);
  $('yrs').innerHTML='<tr><th>An</th>'+names.map(n=>'<th class="n">'+n.replace('Altrix ','A. ')+'</th>').join('')+'</tr>'+D.years.map((y,i)=>'<tr><td>'+y+'</td>'+names.map(n=>{const v=D.p[n].ser[i];return '<td class="n '+(v<0?'down':'up')+'">'+f1(v)+'%</td>'}).join('')+'</tr>').join('')}
+const nf=(x,d)=>x.toLocaleString('ro-RO',{minimumFractionDigits:d||0,maximumFractionDigits:d||0});
+let HOLD={};
+function calc(){const w=PF[cur].w,A=parseFloat($('amt').value)||0,c=$('ccy').value,n=parseInt($('tr').value)||1;
+ $('ctab').innerHTML='<tr><th>Activ</th><th class="n">%</th><th class="n">Total</th><th class="n">Pe tranșă ('+n+')</th></tr>'+Object.entries(w).map(([k,v])=>'<tr><td>'+META[k][1]+' · '+META[k][0]+'<small>'+META[k][2]+'</small></td><td class="n">'+String(v).replace('.',',')+'%</td><td class="n wt">'+nf(A*v/100)+' '+c+'</td><td class="n">'+nf(A*v/100/n)+' '+c+'</td></tr>').join('');
+ const keys=Object.keys(w);let tot=0;keys.forEach(k=>tot+=parseFloat(HOLD[k])||0);
+ $('rtab').innerHTML='<tr><th>Activ</th><th class="n">Țintă</th><th class="n">Am acum</th><th class="n">Acum %</th><th class="n">Acțiune</th></tr>'+keys.map(k=>{const h=parseFloat(HOLD[k])||0,tg=tot*w[k]/100,diff=tg-h,pc=tot?h/tot*100:0,big=tot&&Math.abs(pc-w[k])>=5;
+  return '<tr><td>'+META[k][1]+'</td><td class="n">'+String(w[k]).replace('.',',')+'%</td><td class="n"><input data-h="'+k+'" type="number" min="0" step="any" inputmode="decimal" value="'+(HOLD[k]||'')+'" style="width:96px;font:inherit;text-align:right;padding:5px 8px;border-radius:8px;border:.5px solid var(--line2);background:var(--panel);color:var(--text)"></td><td class="n '+(big?'warn':'')+'">'+(tot?nf(pc,1)+'%':'–')+'</td><td class="n '+(!tot?'':diff>=0?'up':'down')+'">'+(tot?(diff>=0?'Cumpără ':'Vinde ')+nf(Math.abs(diff)):'–')+'</td></tr>'}).join('');
+ $('rsum').textContent=tot?'Total portofoliu: '+nf(tot)+' '+$('ccy').value+(keys.some(k=>Math.abs((parseFloat(HOLD[k])||0)/tot*100-w[k])>=5)?' · cel puțin o poziție e la ≥5 puncte de țintă: rebalansarea are sens.':' · ești în limite, nu e nevoie de rebalansare.'):'';
+ $('rtab').querySelectorAll('input[data-h]').forEach(i=>i.onchange=()=>{HOLD[i.dataset.h]=i.value;calc()})}
+['amt','ccy','tr'].forEach(i=>$(i).addEventListener('input',calc));
 draw();
 </script>
 <script id="altrix-v3js">
