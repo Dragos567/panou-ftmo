@@ -1,34 +1,318 @@
-<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Altrix · Cont FTMO</title>
-<style>body{margin:0;min-height:100vh;background:#090d12;color:#d6dde7;font:16px system-ui,sans-serif;display:grid;place-items:center}
-main{width:min(92vw,460px);padding:20px 0}h1{font-size:20px;margin:0 0 4px}p{color:#7c8a9b;margin:6px 0 14px;line-height:1.45}
-label{display:block;font-size:13px;color:#7c8a9b;margin:12px 0 4px}
-input{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #1c2530;background:#0f151c;color:inherit;font-size:16px}
-button{width:100%;margin-top:16px;padding:12px;border-radius:8px;border:0;background:#e0a93b;color:#15110a;font-weight:600;font-size:16px;cursor:pointer}
-button:disabled{opacity:.5}#st{margin-top:14px;font-size:14px;line-height:1.5}.ok{color:#3fc58a}.bad{color:#ef5b6b}a{color:#e0a93b}.cur{background:#0f151c;border:1px solid #1c2530;border-radius:8px;padding:10px 12px;font-size:14px;color:#9aa6bd}</style></head>
-<body><main><h1>Cont FTMO</h1>
-<p>Introdu datele contului MT5 din emailul FTMO. Parola se trimite direct la MetaApi și nu se salvează la noi. Folosește parola de investitor (doar citire), dacă o ai.</p>
-<div class="cur" id="cur">Se verifică contul curent…</div>
-<label for="lg">Login MT5 (număr)</label><input id="lg" inputmode="numeric" autocomplete="off" spellcheck="false">
-<label for="pw">Parolă (investitor)</label><input id="pw" type="password" autocomplete="off" spellcheck="false">
-<label for="sv">Server (exact ca în email, ex. FTMO-Server)</label><input id="sv" autocomplete="off" spellcheck="false" autocapitalize="off">
-<button id="go">Conectează contul</button>
-<div id="st"></div><p><a href="/">← înapoi la Acasă</a></p></main>
+<!doctype html>
+<html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Altrix · Cont</title>
+<link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/favicon.png">
+<style>
+:root{--bg:#0b0f14;--panel:#121820;--line:#1f2935;--text:#d6dde7;--muted:#7c8a9b;--up:#33c48d;--down:#ef5b6b;--warn:#e0a93b;--accent:#6ea8fe;
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:ui-monospace,'SF Mono',Consolas,monospace;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 var(--font);padding:12px 16px calc(90px + env(safe-area-inset-bottom,0px));max-width:1100px;margin-inline:auto}
+.top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.brand{font-weight:600;letter-spacing:.02em}.brand small{display:block;font-weight:400;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.nav{display:flex;gap:6px;flex-wrap:wrap}.nav a{padding:6px 10px;border:1px solid var(--line);border-radius:6px;color:var(--muted);text-decoration:none;font-size:13px}
+.nav a[aria-current]{color:var(--text);border-color:var(--warn);background:#1a1710}
+.tabbar{display:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:14px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.v{font:600 24px var(--mono);margin-top:4px;font-variant-numeric:tabular-nums}
+.sub{font-size:12px;color:var(--muted);margin-top:2px}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px;font-weight:600}
+.bar{height:8px;background:#1b2430;border-radius:4px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--accent)}
+.up{color:var(--up)}.down{color:var(--down)}.warn{color:var(--warn)}.muted{color:var(--muted)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:var(--muted)}.dot.on{background:var(--up);box-shadow:0 0 0 3px #33c48d33}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tbl{overflow-x:auto}
+.funnel .row{display:flex;align-items:center;gap:10px;margin:7px 0}.funnel .nm{width:200px;flex:none;font-size:13px}.funnel .bw{flex:1;height:18px;background:#1b2430;border-radius:4px;overflow:hidden}.funnel .bw i{display:block;height:100%;background:var(--accent);min-width:2px}.funnel .ct{width:60px;text-align:right;font-family:var(--mono)}
+button{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 12px;font:inherit;cursor:pointer}
+.note{font-size:12px;color:var(--muted);line-height:1.5}
+@media (max-width:760px){.top .nav{display:none}.funnel .nm{width:120px;font-size:12px}
+.tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:#0b0f14ee;border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+.tabbar a{flex:1;text-align:center;text-decoration:none;color:var(--muted);font-size:11px;padding:6px 2px}.tabbar a b{display:block;font-size:16px}.tabbar a.on{color:var(--text)}}
+</style><style id="altrix-v3">
+/* ===== Altrix v3: premium iOS (sticla, iconite squircle, accent sampanie) ===== */
+:root{
+  --bg:#06080d;--bg2:#0a0d13;--panel:rgba(255,255,255,.055);--panel2:rgba(255,255,255,.04);--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.18);
+  --text:#f4f6fa;--muted:rgba(235,240,250,.58);--up:#4fe08a;--down:#ff6b61;--warn:#f5d68a;--accent:#f5d68a;--tabon:rgba(245,214,138,.12);
+  --gold1:#f5d68a;--gold2:#c9993f;--glow:none;--r:26px;--r2:16px;--shadow:none;
+  --font:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif;
+  --spring:cubic-bezier(.34,1.4,.5,1);--ease:cubic-bezier(.2,.8,.2,1);
+}
+:root[data-theme="light"]{
+  --bg:#f2f3f7;--panel:rgba(255,255,255,.85);--panel2:rgba(255,255,255,.6);--line:rgba(0,0,0,.08);--line2:rgba(0,0,0,.16);
+  --text:#14161c;--muted:rgba(30,36,50,.58);--up:#16a34a;--down:#dc2626;--warn:#a8741a;--accent:#a8741a;--tabon:rgba(168,116,26,.10);
+}
+html{background:var(--bg)}
+body{font-family:var(--font);background:transparent;letter-spacing:-.003em;position:relative}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(520px 320px at 6% -2%,rgba(201,153,63,.26),transparent 70%),radial-gradient(520px 380px at 100% 6%,rgba(60,110,255,.22),transparent 70%),radial-gradient(480px 320px at 40% 104%,rgba(130,70,255,.16),transparent 70%),var(--bg)}
+:root[data-theme="light"] body::before{background:radial-gradient(520px 320px at 6% -2%,rgba(245,214,138,.5),transparent 70%),radial-gradient(520px 380px at 100% 6%,rgba(120,160,255,.35),transparent 70%),var(--bg)}
+::selection{background:color-mix(in srgb,var(--gold1) 35%,transparent)}
+.num,.mono,.kpi .v,.phead .big,td.mono{font-variant-numeric:tabular-nums}
+
+/* antet */
+.top{background:rgba(10,13,20,.55);backdrop-filter:saturate(1.8) blur(22px);-webkit-backdrop-filter:saturate(1.8) blur(22px);border-bottom:.5px solid var(--line)}
+:root[data-theme="light"] .top{background:rgba(242,243,247,.7)}
+.brand{font-weight:600;letter-spacing:-.025em}
+.brand::before{content:"A";display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;background:linear-gradient(145deg,#5eead4,#0f9d8a);color:#042b27;font-weight:700;font-size:18px;box-shadow:0 6px 16px -6px rgba(20,184,166,.7)}
+.brand{display:flex;align-items:center;gap:11px}.brand>*{display:block}
+.brand small{letter-spacing:.1em}
+.status{background:var(--panel2);border:.5px solid var(--line);border-radius:99px}
+
+/* iconite squircle */
+.v3i{display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;border-radius:9px;color:#fff;background:linear-gradient(145deg,var(--c1),var(--c2));box-shadow:0 5px 12px -5px var(--c2)}
+.v3i svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav{background:var(--panel2);border:.5px solid var(--line);border-radius:99px;padding:4px;gap:2px}
+.nav a{display:inline-flex;align-items:center;gap:8px;padding:4px 14px 4px 5px;border-radius:99px;border:0;color:var(--muted);font-weight:500;transition:background .25s var(--ease),color .25s var(--ease),transform .15s var(--spring)}
+.nav a:hover{color:var(--text)}
+.nav a:active{transform:scale(.95)}
+.nav a[aria-current]{background:rgba(255,255,255,.11);color:var(--text);box-shadow:none}
+:root[data-theme="light"] .nav a[aria-current]{background:rgba(0,0,0,.07)}
+.nav a[aria-current]::after{display:none}
+
+/* carduri sticla */
+.card,.kpi,details{background:var(--panel);border:.5px solid var(--line);border-radius:var(--r);box-shadow:none}
+.card{padding:20px}
+.card h2{font-size:12.5px;letter-spacing:.01em;text-transform:none;font-weight:500;color:var(--muted)}
+.card h2::before{display:none}
+.stack,.grid{gap:14px}
+.strip .kpi::before{display:none}
+.kpi{border-radius:22px}
+.strip .kpi .v{font-weight:600;letter-spacing:-.025em}
+.phead .big{font-family:var(--font);font-weight:600;letter-spacing:-.04em;font-size:34px}
+.phead .nm{letter-spacing:-.02em}
+.verdict{border-radius:20px;background:var(--panel2)}
+.stat div{border-radius:16px;background:var(--panel2);border:.5px solid var(--line)}
+.alert{border-radius:16px}
+.chip,.chg,.tag{border-radius:99px}
+.meter,.bar{border-radius:99px}
+.charts{border-radius:16px}
+.nl a:hover{color:var(--gold1)}
+.news .nl li{border-bottom-color:var(--line)}
+
+/* butoane, taburi: pastila, raspuns instant */
+.tab,.btn,.ctl button,.mini,.tool{border-radius:99px;background:var(--panel2);border:.5px solid var(--line);transition:transform .35s var(--spring),background .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease);touch-action:manipulation}
+.tab{border-radius:18px;padding:9px 14px}
+.tab:active,.btn:active,.ctl button:active,.mini:active,.tool:active{transform:scale(.95);transition-duration:.08s}
+.tab[aria-pressed="true"]{border-color:rgba(245,214,138,.65);background:var(--tabon);box-shadow:none}
+.tf{border-radius:99px}
+.btn.pri{background:linear-gradient(145deg,var(--gold1),var(--gold2));color:#2a1c05;border-color:transparent;box-shadow:0 8px 20px -8px rgba(201,153,63,.8)}
+.form input,.form select,.ctl input[type=number],.ctl select{border-radius:14px;background:var(--panel2);border:.5px solid var(--line)}
+.form input:focus,.form select:focus,.ctl input:focus,.ctl select:focus{border-color:var(--gold1);box-shadow:0 0 0 3px rgba(245,214,138,.2)}
+input[type=checkbox]{accent-color:var(--gold1)}
+:focus-visible{outline:2px solid var(--gold1);outline-offset:2px}
+table td,table th{border-bottom-color:var(--line)}
+.dot{animation:none}
+
+/* dock iOS pe telefon */
+@media (max-width:760px){
+  .card{padding:16px;border-radius:24px}
+  .tabbar{left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom,0px));border:.5px solid var(--line2);border-radius:28px;background:rgba(18,22,32,.62);backdrop-filter:saturate(1.8) blur(24px);-webkit-backdrop-filter:saturate(1.8) blur(24px);padding:8px 6px}
+  :root[data-theme="light"] .tabbar{background:rgba(255,255,255,.75)}
+  .tabbar a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:500;background:transparent!important;color:var(--muted)!important;transition:transform .35s var(--spring)}
+  .tabbar a:active{transform:scale(.92);transition-duration:.08s}
+  .tabbar a[aria-current],.tabbar a.on{color:var(--text)!important}
+  .tabbar a .v3i{width:44px;height:44px;border-radius:14px;opacity:.78}
+  .tabbar a .v3i svg{width:24px;height:24px}
+  .tabbar a[aria-current] .v3i,.tabbar a.on .v3i{opacity:1;box-shadow:0 8px 18px -6px var(--c2)}
+  body{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))}
+}
+@keyframes v3in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.grid>*,.stack>*,.strip{animation:v3in .45s var(--ease) both}
+@media (prefers-reduced-transparency:reduce){.top,.tabbar{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* iconite instrumente */
+.ii{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:10px;color:#fff;font:700 13px/1 var(--font);letter-spacing:-.02em;vertical-align:middle;box-shadow:0 5px 12px -5px rgba(0,0,0,.6),inset 0 .5px 0 rgba(255,255,255,.35)}
+.ii.au{background:linear-gradient(145deg,#ffe08a,#d9a02c);color:#3a2705}
+.ii.eu{background:linear-gradient(145deg,#6aa8ff,#2f5fe0);font-size:16px}
+.ii.jp{background:linear-gradient(145deg,#ff8a96,#cf2f45);font-size:16px}
+.ii.de{background:linear-gradient(145deg,#4b5567,#171a22);color:#f5d68a;font-size:10px;letter-spacing:-.03em}
+.ii.nk{background:#fff radial-gradient(circle at 50% 50%,#d6213a 0 31%,transparent 33%)}
+.ii.gb{background:linear-gradient(145deg,#c39bff,#6a3de0);font-size:16px}
+.ii.uk{background:linear-gradient(145deg,#4a6cb8,#1a2a55);font-size:11px}
+.tab[data-sym],.tab:has(>.ii){display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;text-align:left}
+.tab>.ii{grid-row:1/3;width:46px;height:46px;border-radius:14px;font-size:17px}.tab>.ii.de,.tab>.ii.uk{font-size:13px}.tab>.ii.eu,.tab>.ii.jp,.tab>.ii.gb{font-size:21px}.tab[data-sym]{column-gap:12px;padding:9px 16px 9px 10px}
+.kpi .k>span>.ii{width:38px;height:38px;border-radius:12px;font-size:15px;margin-right:10px}.kpi .k>span>.ii.de,.kpi .k>span>.ii.uk{font-size:12px}.kpi .k>span>.ii.eu,.kpi .k>span>.ii.jp,.kpi .k>span>.ii.gb{font-size:19px}
+.kpi .k>span{display:inline-flex;align-items:center}
+.phead .nm>.ii,#phName>.ii{width:38px;height:38px;border-radius:12px;margin-right:12px}
+.brow .nm>.ii{width:28px;height:28px;border-radius:9px;margin-right:10px;font-size:12px}
+.brow .nm{display:flex;align-items:center;flex-wrap:wrap}
+.brow .nm .sh,.kpi .k>em{display:none}
+.card h2{display:flex;align-items:center;gap:8px}
+/* text mai mare */
+body{font-size:16.5px;line-height:1.55}
+.nitem a{font-size:18px;line-height:1.42}
+.nitem small,.nl small{font-size:14.5px}
+.nl a{font-size:17.5px}
+.evc .ti{font-size:17px}
+.evc .t{font-size:14.5px}.evc .t b{font-size:16.5px}
+.evc .nums{font-size:14px}
+.hs,.brow small,.scn,.legend,.kpi .s{font-size:14.5px}
+.card h2{font-size:14.5px}
+.verdict p,.alert,.note,ul.why,details,.hs{font-size:15.5px}
+.verdict h3{font-size:18px}
+.tab .n{font-size:15px}.tab .p{font-size:14.5px}.tab .p i{font-size:13.5px}
+.tf,.btn,.tool,.ctl,.ctl button,.ctl select{font-size:15px}
+.status,.readout,.stat .k,.form label,.chip,.mini,.ch,.gr,.arrow,.meterlab{font-size:14px}
+.kpi .k{font-size:13px}
+.strip .kpi .v{font-size:23px}
+.strip .chg{font-size:13.5px}
+.stat .v{font-size:21px}
+td,th{font-size:15.5px}
+.tabbar a{font-size:12.5px!important}
+.brand small{font-size:12.5px}
+@media (max-width:760px){body{font-size:17px}.nitem a{font-size:18.5px}}
+/* pagina pe toata latimea */
+:root{--gut:clamp(16px,2vw,36px)}
+@media (max-width:760px){:root{--gut:12px}}
+body{max-width:none!important;padding-inline:var(--gut)!important}
+.top{margin-inline:calc(-1*var(--gut))!important;padding-inline:var(--gut)!important}
+</style>
+<style id="pf-css">
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}.seg button{border-radius:999px;padding:8px 16px}.seg button.on{border-color:var(--gold1);background:var(--tabon);color:var(--text)}
+.two{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px}@media(max-width:860px){.two{grid-template-columns:1fr}}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;border:.5px solid var(--line2);font-size:12px;color:var(--muted)}
+.pill.g{color:var(--up);border-color:color-mix(in srgb,var(--up) 45%,transparent)}.pill.r{color:var(--down);border-color:color-mix(in srgb,var(--down) 45%,transparent)}.pill.y{color:var(--warn)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);margin-top:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+svg text{fill:var(--muted);font:11px var(--font)}
+.warnbox{border:.5px solid color-mix(in srgb,var(--warn) 50%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent);border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.5}
+.wt{font:600 15px var(--mono)}.ctx .v{font-size:20px}
+ul.cl{margin:6px 0 0;padding-left:18px;line-height:1.55;font-size:14px}ul.cl li{margin:3px 0}
+td small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin-top:2px}
+</style><style id="altrix-sub">.subtabs{display:flex;gap:6px;margin:12px 0 4px;padding:4px;width:max-content;max-width:100%;overflow-x:auto;border-radius:999px;background:var(--panel2,rgba(255,255,255,.04));border:.5px solid var(--line,rgba(255,255,255,.1))}
+.subtabs a{padding:8px 18px;border-radius:999px;color:var(--muted);text-decoration:none;font-size:14.5px;font-weight:500;white-space:nowrap}
+.subtabs a.on{background:var(--tabon,rgba(245,214,138,.14));color:var(--text);box-shadow:inset 0 0 0 .5px var(--line2,rgba(255,255,255,.2))}</style></head><body><nav class="tabbar" aria-label="Navigare"><a href="/" data-p="/"><b>◧</b>Acasă</a><a href="/ma" data-p="/ma"><b>≈</b>Analiză</a><a href="/portofoliu" data-p="/portofoliu"><b>◔</b>Portofoliu</a><a href="/cont" data-p="/cont" class="on"><b>◍</b>Cont</a></nav>
+<header class="top"><div class="brand">Altrix<small>Cont · tranzacții și statistici</small></div>
+<nav class="nav"><a href="/">Acasă</a><a href="/ma">Analiză</a><a href="/portofoliu">Portofoliu</a><a href="/cont" aria-current="page">Cont</a></nav>
+<div class="muted" id="upd" style="margin-left:auto;font-size:12px">…</div></header>
+<div class="subtabs"><a href="#" id="t1" class="on">Prezentare</a><a href="#" id="t2">Conectare cont</a></div>
+
+<div id="v1">
+<div id="bar" class="note" style="margin:10px 0"></div>
+<div class="grid" id="kpi"></div>
+
+<h2>Poziții deschise</h2>
+<div class="card tbl"><table id="pos"></table></div>
+
+<h2>Evoluția contului</h2>
+<div class="card"><svg id="eq" viewBox="0 0 700 260" width="100%" role="img" aria-label="Evoluția balanței"></svg><div class="legend" id="eleg"></div></div>
+
+<h2>Limite de risc (standard FTMO 2-Step)</h2>
+<div class="grid" id="lim"></div>
+<p class="note">Aproximativ, calculat din istoricul vizibil aici: pierdere zilnică maximă 5% și pierdere totală maximă 10% din balanța inițială. Ziua se resetează la miezul nopții în ora Europei Centrale.</p>
+
+<h2>Statistici</h2>
+<div class="seg" id="per"></div>
+<div class="grid" id="stat"></div>
+
+<h2>Istoric tranzacții</h2>
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><button id="csv">Descarcă CSV</button><span class="note" id="hcount"></span></div>
+<div class="card tbl"><table id="hist"></table></div>
+</div>
+
+<div id="v2" style="display:none;max-width:520px">
+<div class="card"><div class="k">Cont MT5 conectat</div><div id="cur" class="sub" style="margin:6px 0 10px;font-size:14px">Se verifică…</div>
+<p class="note">Introdu datele contului din emailul FTMO. Parola se trimite direct la MetaApi și nu se salvează la noi. Folosește parola de investitor (doar citire).</p>
+<label class="k" for="lg">Login MT5 (număr)</label><input id="lg" inputmode="numeric" autocomplete="off" spellcheck="false" class="fi">
+<label class="k" for="pw">Parolă (investitor)</label><input id="pw" type="password" autocomplete="off" spellcheck="false" class="fi">
+<label class="k" for="sv">Server (exact ca în email, ex. FTMO-Server)</label><input id="sv" autocomplete="off" spellcheck="false" autocapitalize="off" class="fi">
+<button id="go" style="margin-top:14px;width:100%;padding:12px;background:var(--tabon);border-color:var(--gold1)">Conectează contul</button>
+<div id="st" class="sub" style="margin-top:10px;font-size:14px"></div></div></div>
+
 <script>
-const $=id=>document.getElementById(id),st=$('st');
-function show(h,c){st.className=c||'';st.textContent=h}
-function cur(j){if(j.error)return 'Cont curent: …'+(j.id_end||'')+' · '+j.error;return 'Cont curent: '+(j.login||'?')+' · '+(j.server||'?')+' · stare: '+(j.state||'?')+' · conexiune: '+(j.connection||'?')}
-async function status(){try{const r=await fetch('/api/ext/account',{cache:'no-store'});const j=await r.json();$('cur').textContent=cur(j);return j}catch(e){$('cur').textContent='Nu pot citi starea contului.';return {}}}
-async function wait(){for(let i=0;i<30;i++){await new Promise(r=>setTimeout(r,4000));const j=await status();
- if(j.connection==='CONNECTED'){show('Conectat. Datele încep să apară pe site în ~1 minut.','ok');return}
- show('Se conectează… ('+(j.connection||j.state||'așteptare')+')','')}
- show('Încă nu e conectat. Verifică loginul și serverul sau reîncearcă peste câteva minute.','bad')}
-$('go').onclick=async()=>{const b=$('go');const lg=$('lg').value.trim(),pw=$('pw').value,sv=$('sv').value.trim();
- if(!lg||!pw||!sv)return show('Completează toate câmpurile.','bad');
- b.disabled=true;show('Se trimit datele…','');
- try{const r=await fetch('/api/ext/account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:lg,password:pw,server:sv})});
-  const j=await r.json();$('pw').value='';
-  if(!r.ok){b.disabled=false;return show(j.error||'Eroare','bad')}
-  show('Cont adăugat. Se conectează…','ok');wait()}
- catch(e){b.disabled=false;show('Eroare: '+e.message,'bad')}};
-status();
-</script></body></html>
+const $=id=>document.getElementById(id);
+const TZ='Europe/Berlin';
+const nf=(x,d)=>x==null||isNaN(x)?'–':Number(x).toLocaleString('ro-RO',{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d});
+const sg=(x,d)=>x==null||isNaN(x)?'–':(x>0?'+':'')+nf(x,d);
+const cl=x=>x>0?'up':x<0?'down':'';
+let D=null,PER=30;
+const dayKey=t=>new Date(t).toLocaleDateString('sv-SE',{timeZone:TZ});
+const fdt=t=>t?new Date(t).toLocaleString('ro-RO',{timeZone:'Europe/Bucharest',day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'–';
+function css(){const s=document.createElement('style');s.textContent='.fi{width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:.5px solid var(--line2);background:var(--panel);color:var(--text);font:inherit;margin-top:4px;margin-bottom:8px}.bar2{height:8px;border-radius:5px;background:var(--panel2);overflow:hidden;margin-top:8px}.bar2 i{display:block;height:100%;border-radius:5px}';document.head.appendChild(s)}css();
+function trades(deals){const by={};deals.forEach(d=>{const t=d.type||'';if(t==='DEAL_TYPE_BALANCE'||t==='DEAL_TYPE_CREDIT'||!d.positionId||!d.symbol)return;(by[d.positionId]=by[d.positionId]||[]).push(d)});
+ const out=[];Object.values(by).forEach(L=>{const ins=L.filter(d=>(d.entryType||'').includes('IN')&&!(d.entryType||'').includes('OUT')),outs=L.filter(d=>(d.entryType||'').includes('OUT'));if(!outs.length)return;
+  const i=ins[0]||L[0],o=outs[outs.length-1];const net=L.reduce((s,d)=>s+(d.profit||0)+(d.commission||0)+(d.swap||0),0);
+  const long=(i.type||'').includes('BUY');out.push({sym:i.symbol,dir:long?'Buy':'Sell',vol:ins.reduce((s,d)=>s+(d.volume||0),0)||i.volume,open:i.time,close:o.time,pin:i.price,pout:o.price,net:net,pid:i.positionId})});
+ out.sort((a,b)=>a.close<b.close?1:-1);return out}
+function initial(deals,bal,netAll){const b=deals.filter(d=>d.type==='DEAL_TYPE_BALANCE').sort((a,c)=>a.time<c.time?-1:1);return b.length?b[0].profit:(bal-netAll)}
+function stats(T){const n=T.length,w=T.filter(t=>t.net>0),l=T.filter(t=>t.net<0);const gw=w.reduce((s,t)=>s+t.net,0),gl=-l.reduce((s,t)=>s+t.net,0);
+ let run=0,mx=0;T.slice().reverse().forEach(t=>{if(t.net<0){run++;mx=Math.max(mx,run)}else run=0});
+ return {n,wins:w.length,wr:n?w.length/n*100:null,pf:gl>0?gw/gl:(gw>0?Infinity:null),aw:w.length?gw/w.length:null,al:l.length?-gl/l.length:null,exp:n?T.reduce((s,t)=>s+t.net,0)/n:null,best:n?Math.max(...T.map(t=>t.net)):null,worst:n?Math.min(...T.map(t=>t.net)):null,streak:mx,net:T.reduce((s,t)=>s+t.net,0)}}
+function render(){if(!D)return;const I=D.info||{},P=D.positions||[],T=trades(D.deals||[]);
+ const bal=I.balance,eq=I.equity,fl=P.reduce((s,p)=>s+(p.profit||0)+(p.swap||0),0);
+ const netAll=T.reduce((s,t)=>s+t.net,0),ini=initial(D.deals||[],bal,netAll);
+ const today=dayKey(Date.now()),pt=T.filter(t=>dayKey(t.close)===today).reduce((s,t)=>s+t.net,0)+fl;
+ $('upd').textContent=D.err?'eroare date':'actualizat '+new Date().toLocaleTimeString('ro-RO');
+ $('bar').innerHTML=(I.login?'<span class="dot on"></span>Cont <b>'+I.login+'</b> · '+(I.server||'')+' · '+(I.currency||'')+' · levier 1:'+(I.leverage||'?'):'<span class="dot"></span>Niciun cont conectat sau fără date')+(D.err?' · <span class="down">'+D.err.slice(0,120)+'</span>':'');
+ const k=[['Balanță',nf(bal)+' '+(I.currency||''),'bani închiși',''],['Equity',nf(eq)+' '+(I.currency||''),'balanță + deschise',''],['Profit deschis',sg(fl),P.length+' poziții',cl(fl)],['P/L azi',sg(pt),'închis + deschis',cl(pt)],['Randament total',ini?sg((eq-ini)/ini*100)+'%':'–','față de '+nf(ini)+' depus',cl(eq-ini)],['Marjă liberă',nf(I.freeMargin),'marjă folosită '+nf(I.margin),'']];
+ $('kpi').innerHTML=k.map(x=>'<div class="card"><div class="k">'+x[0]+'</div><div class="v '+x[3]+'">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>').join('');
+ $('pos').innerHTML=P.length?'<tr><th>Simbol</th><th>Tip</th><th class="n">Lot</th><th class="n">Intrare</th><th class="n">Curent</th><th class="n">SL</th><th class="n">TP</th><th class="n">Profit</th></tr>'+P.map(p=>{const b=(p.type||'').includes('BUY'),pr=(p.profit||0)+(p.swap||0);return '<tr><td><b>'+p.symbol+'</b><small>'+fdt(p.time)+'</small></td><td><span class="pill '+(b?'g':'r')+'">'+(b?'Buy':'Sell')+'</span></td><td class="n">'+nf(p.volume,2)+'</td><td class="n">'+p.openPrice+'</td><td class="n">'+(p.currentPrice||'–')+'</td><td class="n">'+(p.stopLoss||'–')+'</td><td class="n">'+(p.takeProfit||'–')+'</td><td class="n '+cl(pr)+'">'+sg(pr)+'</td></tr>'}).join(''):'<tr><td class="muted" style="padding:14px">Nicio poziție deschisă acum.</td></tr>';
+ curve(T,ini,eq);
+ const dl=ini*0.05,tl=ini*0.10,dls=Math.min(0,pt),used=ini?Math.min(100,-dls/dl*100):0,tot=ini?Math.max(0,(ini-eq)/tl*100):0;
+ $('lim').innerHTML=[['Pierdere zilnică (max 5%)',nf(dls)+' / −'+nf(dl),used,'azi: '+sg(pt)],['Pierdere totală (max 10%)',nf(Math.min(0,eq-ini))+' / −'+nf(tl),Math.min(100,tot),'față de balanța inițială']].map(x=>'<div class="card"><div class="k">'+x[0]+'</div><div class="v" style="font-size:18px">'+x[1]+'</div><div class="bar2"><i style="width:'+x[2].toFixed(0)+'%;background:'+(x[2]>70?'var(--down)':x[2]>40?'var(--warn)':'var(--up)')+'"></i></div><div class="sub">'+x[3]+' · folosit '+x[2].toFixed(0)+'%</div></div>').join('');
+ per();
+ const cut=PER?Date.now()-PER*864e5:0,TS=T.filter(t=>new Date(t.close).getTime()>=cut),S=stats(TS);
+ $('stat').innerHTML=[['Tranzacții',S.n,S.wins+' câștigătoare',''],['Rată de câștig',S.wr==null?'–':nf(S.wr,0)+'%','',''],['Profit net',sg(S.net),'după comisioane',cl(S.net)],['Profit factor',S.pf==null?'–':S.pf===Infinity?'∞':nf(S.pf),'câștiguri / pierderi',''],['Câștig mediu',sg(S.aw),'',''],['Pierdere medie',sg(S.al),'',''],['Speranță / tranz.',sg(S.exp),'medie pe tranzacție',cl(S.exp)],['Cea mai bună',sg(S.best),'',''],['Cea mai slabă',sg(S.worst),'',''],['Serie pierderi',S.streak,'max consecutive','']].map(x=>'<div class="card"><div class="k">'+x[0]+'</div><div class="v '+(x[3]||'')+'" style="font-size:20px">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>').join('');
+ $('hcount').textContent=T.length+' tranzacții închise în total (ultimele 100 afișate)';
+ $('hist').innerHTML=T.length?'<tr><th>Închis</th><th>Simbol</th><th>Tip</th><th class="n">Lot</th><th class="n">Intrare</th><th class="n">Ieșire</th><th class="n">Profit net</th></tr>'+T.slice(0,100).map(t=>'<tr><td>'+fdt(t.close)+'<small>deschis '+fdt(t.open)+'</small></td><td><b>'+t.sym+'</b></td><td><span class="pill '+(t.dir==='Buy'?'g':'r')+'">'+t.dir+'</span></td><td class="n">'+nf(t.vol,2)+'</td><td class="n">'+t.pin+'</td><td class="n">'+t.pout+'</td><td class="n '+cl(t.net)+'">'+sg(t.net)+'</td></tr>').join(''):'<tr><td class="muted" style="padding:14px">Nu există încă tranzacții închise în istoricul citit.</td></tr>';
+ window.TT=T}
+function per(){$('per').innerHTML=[[7,'7 zile'],[30,'30 zile'],[90,'90 zile'],[0,'Tot']].map(x=>'<button class="'+(PER===x[0]?'on':'')+'" data-p="'+x[0]+'">'+x[1]+'</button>').join('');$('per').querySelectorAll('button').forEach(b=>b.onclick=()=>{PER=+b.dataset.p;render()})}
+function curve(T,ini,eq){const asc=T.slice().reverse();let v=ini||0;const pts=[[asc.length?new Date(asc[0].open).getTime():Date.now()-864e5,v]];asc.forEach(t=>{v+=t.net;pts.push([new Date(t.close).getTime(),v])});if(eq!=null)pts.push([Date.now(),eq]);
+ const W=700,H=260,l=52,r=10,t=12,b=22;if(pts.length<2){$('eq').innerHTML='<text x="350" y="130" text-anchor="middle">Nu sunt încă destule tranzacții pentru grafic</text>';return}
+ let mn=Math.min(...pts.map(p=>p[1])),mx=Math.max(...pts.map(p=>p[1]));if(mx-mn<1){mx+=1;mn-=1}const pad=(mx-mn)*.08;mn-=pad;mx+=pad;const t0=pts[0][0],t1=pts[pts.length-1][0]||t0+1;
+ const X=x=>l+(W-l-r)*(x-t0)/Math.max(1,t1-t0),Y=y=>H-b-(H-b-t)*(y-mn)/(mx-mn);let s='';
+ for(let i=0;i<=3;i++){const y=mn+(mx-mn)*i/3;s+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+Y(y)+'" y2="'+Y(y)+'" stroke="var(--line)"/><text x="4" y="'+(Y(y)+4)+'">'+nf(y,0)+'</text>'}
+ const path=pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
+ s+='<path d="'+path+' L'+X(t1)+' '+(H-b)+' L'+X(t0)+' '+(H-b)+'Z" fill="rgba(245,214,138,.10)"/><path d="'+path+'" fill="none" stroke="var(--gold1)" stroke-width="2.4" stroke-linejoin="round"/>';
+ if(ini)s+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+Y(ini)+'" y2="'+Y(ini)+'" stroke="var(--muted)" stroke-dasharray="4 4"/>';
+ s+='<text x="'+l+'" y="'+(H-6)+'">'+new Date(t0).toLocaleDateString('ro-RO',{day:'2-digit',month:'short'})+'</text><text x="'+(W-r)+'" y="'+(H-6)+'" text-anchor="end">'+new Date(t1).toLocaleDateString('ro-RO',{day:'2-digit',month:'short'})+'</text>';$('eq').innerHTML=s;
+ $('eleg').innerHTML='<span><i style="background:var(--gold1)"></i>Balanță după fiecare tranzacție închisă</span><span>linia punctată = suma depusă</span>'}
+async function load(){try{const r=await fetch('/api/acc',{cache:'no-store'});D=await r.json();render()}catch(e){$('upd').textContent='fără conexiune'}}
+$('csv').onclick=()=>{const T=window.TT||[];const rows=[['Inchis','Deschis','Simbol','Tip','Lot','Intrare','Iesire','Profit net']].concat(T.map(t=>[t.close,t.open,t.sym,t.dir,t.vol,t.pin,t.pout,t.net.toFixed(2)]));
+ const b=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tranzactii.csv';a.click()};
+/* tab-uri */
+function tab(n){$('v1').style.display=n==1?'':'none';$('v2').style.display=n==2?'':'none';$('t1').classList.toggle('on',n==1);$('t2').classList.toggle('on',n==2);if(n==2)status()}
+$('t1').onclick=e=>{e.preventDefault();tab(1)};$('t2').onclick=e=>{e.preventDefault();tab(2)};if(location.hash==='#conectare')tab(2);
+/* conectare cont */
+const st=$('st');function show(h,c){st.className='sub '+(c||'');st.textContent=h}
+function curtxt(j){if(j.error)return 'Cont curent: …'+(j.id_end||'')+' · '+j.error;return 'Cont curent: '+(j.login||'?')+' · '+(j.server||'?')+' · stare: '+(j.state||'?')+' · conexiune: '+(j.connection||'?')}
+async function status(){try{const r=await fetch('/api/ext/account',{cache:'no-store'});const j=await r.json();$('cur').textContent=curtxt(j);return j}catch(e){$('cur').textContent='Nu pot citi starea contului.';return {}}}
+async function wait(){for(let i=0;i<30;i++){await new Promise(r=>setTimeout(r,4000));const j=await status();if(j.connection==='CONNECTED'){show('Conectat. Datele încep să apară în ~1 minut.','up');load();return}show('Se conectează… ('+(j.connection||j.state||'așteptare')+')','')}show('Încă nu e conectat. Verifică loginul și serverul sau reîncearcă peste câteva minute.','down')}
+$('go').onclick=async()=>{const b=$('go');const lg=$('lg').value.trim(),pw=$('pw').value,sv=$('sv').value.trim();if(!lg||!pw||!sv)return show('Completează toate câmpurile.','down');b.disabled=true;show('Se trimit datele…','');
+ try{const r=await fetch('/api/ext/account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:lg,password:pw,server:sv})});const j=await r.json();$('pw').value='';if(!r.ok){b.disabled=false;return show(j.error||'Eroare','down')}show('Cont adăugat. Se conectează…','up');wait()}catch(e){b.disabled=false;show('Eroare: '+e.message,'down')}};
+load();setInterval(load,5000);
+</script>
+<script id="altrix-v3js">
+(function(){
+var P={'/':['M5 12l-2 0l9 -9l9 9l-2 0M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6','#f1f4fa','#9aa6bd'],
+'/ma':['M4 19l16 0M4 15l4 -6l4 2l4 -5l4 4','#5ad8f5','#0c8fb8'],
+'/fvg':['M6 5h12l3 5l-8.5 9.5a.7 .7 0 0 1 -1 0l-8.5 -9.5l3 -5','#ff8ad0','#d9308f'],
+'/cont':['M3 7h16a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2zM3 7l2.5 -3h11.5M16 14h2','#7ee8c0','#16a37a'],
+'/portofoliu':['M12 3v9h9M20.5 14a8.5 8.5 0 1 1 -10.5 -10.5','#ffd27a','#e0881f'],
+'/lab':['M9 3l6 0M10 9l4 0M10 3v6l-4 11a.7 .7 0 0 0 .5 1h11a.7 .7 0 0 0 .5 -1l-4 -11v-6','#b6e65a','#52a31c']};
+function run(){var pp=location.pathname;if(pp==='/fvg')pp='/ma';document.querySelectorAll('.tabbar a').forEach(function(a){if(a.getAttribute('href')===pp)a.classList.add('on')});document.querySelectorAll('.nav a,.tabbar a').forEach(function(a){
+ if(a.querySelector('.v3i'))return;var m=P[a.getAttribute('href')];if(!m)return;
+ var b=a.querySelector('b');if(b)b.remove();
+ a.insertAdjacentHTML('afterbegin','<span class="v3i" aria-hidden="true" style="--c1:'+m[1]+';--c2:'+m[2]+(a.getAttribute('href')==='/'?';color:#1b2433':'')+'"><svg viewBox="0 0 24 24"><path d="'+m[0]+'"/></svg></span>');});}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
+})();
+(function(){
+var G={au:'Au',eu:'€',jp:'¥',de:'DAX',nk:'',gb:'£',uk:'UK'};
+function kind(t){t=(t||'').toLowerCase();
+ if(/aur|xau|gold/.test(t))return'au';if(/eur\/?usd/.test(t))return'eu';if(/usd\/?jpy/.test(t))return'jp';
+ if(/dax|ger40/.test(t))return'de';if(/nikkei|n225|jp225/.test(t))return'nk';if(/gbp\/?usd/.test(t))return'gb';if(/uk100|ftse/.test(t))return'uk';return''}
+function mk(k){var s=document.createElement('span');s.className='ii '+k;s.setAttribute('aria-hidden','true');s.textContent=G[k];return s}
+function addTo(host,labelEl,target){if(!host||host.querySelector(':scope>.ii,:scope>span>.ii'))return;
+ var k=kind(labelEl.textContent);if(!k)return;target.insertBefore(mk(k),target.firstChild)}
+var q=0;function run(){q=0;
+ document.querySelectorAll('.tab[data-sym]').forEach(function(t){var n=t.querySelector('.n');if(n&&!t.querySelector(':scope>.ii')){var k=kind(n.textContent);if(k)t.insertBefore(mk(k),t.firstChild)}});
+ document.querySelectorAll('.kpi .k>span:first-child').forEach(function(s){if(!s.querySelector('.ii')){var k=kind(s.textContent);if(k)s.insertBefore(mk(k),s.firstChild)}});
+ document.querySelectorAll('.brow .nm').forEach(function(s){if(!s.querySelector(':scope>.ii')){var k=kind(s.firstChild&&s.firstChild.textContent);if(k)s.insertBefore(mk(k),s.firstChild)}});
+ document.querySelectorAll('#phName').forEach(function(s){if(!s.querySelector(':scope>.ii')){var k=kind(s.textContent);if(k)s.insertBefore(mk(k),s.firstChild)}});}
+function sched(){if(!q){q=1;requestAnimationFrame(run)}}
+function start(){run();new MutationObserver(sched).observe(document.body,{childList:true,subtree:true})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+</body></html>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Panou Trading FTMO - server independent (non-stop). Date de la FTMO prin MetaApi; fara TradingView, fara Mac.
-import os, sys, glob, json, time, threading, hmac, secrets, gzip, base64, subprocess, collections, io, tarfile, shutil, hashlib
+import os, re, sys, glob, json, time, threading, hmac, secrets, gzip, base64, subprocess, collections, io, tarfile, shutil, hashlib
 import urllib.request, urllib.parse, urllib.error, datetime as dt
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
@@ -461,7 +461,7 @@ LOGIN = """<!doctype html><meta charset=utf-8><meta name=viewport content="width
 <input name=k type=password autofocus autocomplete=current-password placeholder="Cod de acces" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #1c2530;background:#0f151c;color:inherit;font-size:16px">
 <button style="width:100%;margin-top:10px;padding:12px;border-radius:8px;border:0;background:#e0a93b;color:#15110a;font-weight:600;font-size:16px">Intră</button>@@ERR@@</form></body>"""
 STATIC = ["manifest.webmanifest", "sw.js", "icon-180.png", "icon-192.png", "icon-512.png", "favicon.png"]
-PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html", "/lab": "lab.html", "/portofoliu": "portofoliu.html", "/chei": "chei.html", "/cont": "cont.html"}
+PG = {"/": "macro.html", "/macro": "macro.html", "/macro.html": "macro.html", "/ma": "index.html", "/analiza": "index.html", "/index.html": "index.html", "/fvg": "fvg.html", "/fvg.html": "fvg.html", "/lab": "lab.html", "/portofoliu": "portofoliu.html", "/chei": "chei.html", "/cont": "cont.html"}
 RUN = {"p": None}
 def run_probe():
     if RUN["p"] and RUN["p"].poll() is None: return False
@@ -573,6 +573,42 @@ def account_connect(login, password, server):
     try: mapi("POST", "/users/current/accounts/%s/deploy" % AID, None, {"transaction-id": secrets.token_hex(16)})
     except Exception: pass
     return 200, {"saved": True, "id_end": AID[-6:]}
+
+# ---------------- Cont: pozitii, istoric, statistici (doar citire) ----------------
+_ACC = {"info": (0, None), "pos": (0, None), "deals": (0, None), "err": None}
+def _acc_get(path, tries=2, timeout=30):
+    cb, _ = bases()
+    return http("%s/users/current/accounts/%s/%s" % (cb, AID, path), tries=tries, timeout=timeout)
+def _deals_file(login): return os.path.join(DATA, "deals_%s.json" % re.sub(r"\W", "", str(login or "x")))
+def acc_overview():
+    now = time.time(); out = {"t": now, "err": None}
+    try:
+        if now - _ACC["info"][0] > 4 or _ACC["info"][1] is None: _ACC["info"] = (now, _acc_get("account-information"))
+        if now - _ACC["pos"][0] > 4 or _ACC["pos"][1] is None:
+            p = _acc_get("positions"); _ACC["pos"] = (now, p if isinstance(p, list) else (p or {}).get("positions", []))
+    except Exception as e: out["err"] = str(e)[:200]; _ACC["err"] = out["err"]
+    info = _ACC["info"][1] or {}; login = info.get("login")
+    try:
+        if now - _ACC["deals"][0] > 60 or _ACC["deals"][1] is None:
+            d = dt.datetime.utcnow()
+            j = _acc_get("history-deals/time/%s/%s?limit=1000" % (iso(d - dt.timedelta(days=365)), iso(d + dt.timedelta(days=1))), timeout=45)
+            L = j if isinstance(j, list) else (j or {}).get("deals", [])
+            f = _deals_file(login); old = {}
+            try: old = {x["id"]: x for x in json.load(open(f, encoding="utf-8"))}
+            except Exception: pass
+            for x in L:
+                if x.get("id") is not None: old[x["id"]] = x
+            allv = sorted(old.values(), key=lambda x: x.get("time", ""))
+            try: json.dump(allv, open(f, "w", encoding="utf-8"))
+            except Exception as e: log("deals save", e)
+            _ACC["deals"] = (now, allv)
+    except Exception as e:
+        out["err"] = out["err"] or str(e)[:200]
+        if _ACC["deals"][1] is None:
+            try: _ACC["deals"] = (0, json.load(open(_deals_file(login), encoding="utf-8")))
+            except Exception: pass
+    out.update(info=info, positions=_ACC["pos"][1] or [], deals=_ACC["deals"][1] or [], age=int(now - max(_ACC["info"][0], 1)))
+    return out
 def databento_test():
     """Verifica accesul serverului la Databento si valabilitatea cheii (apel gratuit de metadate)."""
     k = key_get("databento")
@@ -838,6 +874,7 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, body, "application/gzip", {"Content-Disposition": 'attachment; filename="%s_%s_%gy.csv.gz"' % (sy, tf or "raw", yr), "X-Rows": str(info)})
             if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else (databento_dl(qs) if qs.get("do", [""])[0] in ("download", "dlstatus", "estimate", "book", "bookstatus") else databento_test())))
             if u.path == "/api/quotes": return self.send(200, get_quotes())
+            if u.path == "/api/acc": return self.send(200, acc_overview())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
             if u.path == "/api/trdiag":
                 o = {}

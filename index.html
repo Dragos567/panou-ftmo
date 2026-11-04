@@ -422,16 +422,19 @@ body{max-width:none!important;padding-inline:var(--gut)!important}
 .qs.lag i{background:#ffb340;box-shadow:0 0 0 3px rgba(255,179,64,.2)}.qs.off i{background:#8b95a5;box-shadow:none}.qs.x i{background:#ff6b61;box-shadow:none}
 .tab .qs{margin:0 0 0 6px;font-size:0}.tab .qs i{width:6px;height:6px;box-shadow:none}
 </style>
-</head>
+<style id="altrix-sub">.subtabs{display:flex;gap:6px;margin:12px 0 4px;padding:4px;width:max-content;max-width:100%;overflow-x:auto;border-radius:999px;background:var(--panel2,rgba(255,255,255,.04));border:.5px solid var(--line,rgba(255,255,255,.1))}
+.subtabs a{padding:8px 18px;border-radius:999px;color:var(--muted);text-decoration:none;font-size:14.5px;font-weight:500;white-space:nowrap}
+.subtabs a.on{background:var(--tabon,rgba(245,214,138,.14));color:var(--text);box-shadow:inset 0 0 0 .5px var(--line2,rgba(255,255,255,.2))}</style></head>
 <body>
 <!--SHELL-BODY--><div id="offline" role="status"></div>
-<nav class="tabbar" aria-label="Navigare"><a href="/" data-p="/"><b>◧</b>Acasă</a><a href="/ma" data-p="/ma"><b>≈</b>MA · RSI</a><a href="/fvg" data-p="/fvg"><b>◈</b>FVG · MSS</a><a href="/portofoliu" data-p="/portofoliu"><b>◔</b>Portofoliu</a></nav>
+<nav class="tabbar" aria-label="Navigare"><a href="/" data-p="/"><b>◧</b>Acasă</a><a href="/ma" data-p="/ma" class="on"><b>≈</b>Analiză</a><a href="/portofoliu" data-p="/portofoliu"><b>◔</b>Portofoliu</a><a href="/cont" data-p="/cont"><b>◍</b>Cont</a></nav>
 <!--/SHELL-BODY-->
 
 
 <header class="top">
   <div class="brand">Altrix<small>Strategie: medii mobile + indicatori</small></div>
-  <nav class="nav"><a href="/">Acasă</a><a href="/ma" aria-current="page">MA · RSI · MACD</a><a href="/fvg">FVG · Lichiditate · MSS</a><a href="/portofoliu">Portofoliu</a></nav>
+  <nav class="nav"><a href="/">Acasă</a><a href="/ma" aria-current="page">Analiză</a><a href="/portofoliu">Portofoliu</a><a href="/cont">Cont</a></nav>
+  <div style="flex:0 0 100%;margin:-2px 0 0"><div class="subtabs" style="margin:0"><a href="/ma" class="on">MA · RSI · MACD</a><a href="/fvg">FVG · Lichiditate · MSS</a></div></div>
   <div class="tabs" id="symTabs" role="group" aria-label="Instrument"></div>
   <div class="tabs" id="tfTabs" role="group" aria-label="Timeframe"></div>
   <div class="status" id="status">Se încarcă…</div>
@@ -975,9 +978,10 @@ setTimeout(()=>{if(S.bars){const k=CK(S.bars.sym,S.bars.tf);if(!CC.has(k))CC.set
 var P={'/':['M5 12l-2 0l9 -9l9 9l-2 0M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6','#f1f4fa','#9aa6bd'],
 '/ma':['M4 19l16 0M4 15l4 -6l4 2l4 -5l4 4','#5ad8f5','#0c8fb8'],
 '/fvg':['M6 5h12l3 5l-8.5 9.5a.7 .7 0 0 1 -1 0l-8.5 -9.5l3 -5','#ff8ad0','#d9308f'],
+'/cont':['M3 7h16a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2zM3 7l2.5 -3h11.5M16 14h2','#7ee8c0','#16a37a'],
 '/portofoliu':['M12 3v9h9M20.5 14a8.5 8.5 0 1 1 -10.5 -10.5','#ffd27a','#e0881f'],
 '/lab':['M9 3l6 0M10 9l4 0M10 3v6l-4 11a.7 .7 0 0 0 .5 1h11a.7 .7 0 0 0 .5 -1l-4 -11v-6','#b6e65a','#52a31c']};
-function run(){document.querySelectorAll('.nav a,.tabbar a').forEach(function(a){
+function run(){var pp=location.pathname;if(pp==='/fvg')pp='/ma';document.querySelectorAll('.tabbar a').forEach(function(a){if(a.getAttribute('href')===pp)a.classList.add('on')});document.querySelectorAll('.nav a,.tabbar a').forEach(function(a){
  if(a.querySelector('.v3i'))return;var m=P[a.getAttribute('href')];if(!m)return;
  var b=a.querySelector('b');if(b)b.remove();
  a.insertAdjacentHTML('afterbegin','<span class="v3i" aria-hidden="true" style="--c1:'+m[1]+';--c2:'+m[2]+(a.getAttribute('href')==='/'?';color:#1b2433':'')+'"><svg viewBox="0 0 24 24"><path d="'+m[0]+'"/></svg></span>');});}
