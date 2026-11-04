@@ -561,7 +561,7 @@ def account_connect(login, password, server):
         if rel: body["reliability"] = rel
         return mapi("POST", "/users/current/accounts", body, {"transaction-id": secrets.token_hex(16)})
     tried = []
-    for rel in ("high", "regular", None):
+    for rel in ("regular", None, "high"):   # regular primul: conturile "high" cer sold MetaApi si se opresc cand sunt fara credit
         st, j = _mk(rel); tried.append("%s=%s" % (rel or "implicit", st))
         if st in (200, 201, 202) and j.get("id"): break
         if "top up" not in str(j).lower() and "reliab" not in str(j).lower(): break
