@@ -672,8 +672,14 @@ def watchdog():
         try: wd_step()
         except Exception as e: log("watchdog", repr(e))
         time.sleep(30)
+_WA = {"t": 0, "v": None}
+def wd_acct():
+    if time.time() - _WA["t"] > 20:
+        _WA["t"] = time.time(); ac = wd_acc()
+        _WA["v"] = {"err": ac["_err"]} if ac.get("_err") else {"state": ac.get("state"), "conn": ac.get("connectionStatus"), "rel": ac.get("reliability"), "server": ac.get("server"), "login": ac.get("login")}
+    return _WA["v"]
 def wd_public():
-    return {"state": WD["state"], "checked": int(WD["checked"]), "bad_for": int(time.time() - WD["bad_since"]) if WD["bad_since"] else 0, "events": list(WD["events"])[:12], "actions_today": len(WD["acts"]), "account": account_status() if False else None}
+    return {"state": WD["state"], "checked": int(WD["checked"]), "bad_for": int(time.time() - WD["bad_since"]) if WD["bad_since"] else 0, "events": list(WD["events"])[:12], "actions_today": len(WD["acts"]), "acct": wd_acct(), "last_err": STAT.get("last_err"), "q_age": int(time.time() - STAT["q_ok"]) if STAT.get("q_ok") else None, "id_end": AID[-6:]}
 def databento_test():
     """Verifica accesul serverului la Databento si valabilitatea cheii (apel gratuit de metadate)."""
     k = key_get("databento")
