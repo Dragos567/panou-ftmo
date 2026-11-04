@@ -556,11 +556,17 @@ def account_status():
 def account_connect(login, password, server):
     global AID
     def _mk(rel):
-        return mapi("POST", "/users/current/accounts", {"name": "Altrix-FTMO-" + time.strftime("%m%d%H%M"), "type": "cloud-g2", "login": login, "password": password,
-                 "server": server, "platform": "mt5", "magic": 0, "application": "MetaApi", "reliability": rel}, {"transaction-id": secrets.token_hex(16)})
-    st, j = _mk("high")
-    if st not in (200, 201, 202) and ("top up" in str(j.get("message", "")).lower() or "reliab" in str(j.get("message", "")).lower()):
-        st, j = _mk("regular")   # fiabilitate 'high' cere sold in MetaApi; 'regular' merge pe contul gratuit
+        body = {"name": "Altrix-FTMO-" + time.strftime("%m%d%H%M"), "type": "cloud-g2", "login": login, "password": password,
+                "server": server, "platform": "mt5", "magic": 0, "application": "MetaApi"}
+        if rel: body["reliability"] = rel
+        return mapi("POST", "/users/current/accounts", body, {"transaction-id": secrets.token_hex(16)})
+    tried = []
+    for rel in ("high", "regular", None):
+        st, j = _mk(rel); tried.append("%s=%s" % (rel or "implicit", st))
+        if st in (200, 201, 202) and j.get("id"): break
+        if "top up" not in str(j).lower() and "reliab" not in str(j).lower(): break
+    if st not in (200, 201, 202) or not j.get("id"):
+        return st, {"error": "[v2 " + ",".join(tried) + "] " + (str(j.get("message") or j.get("error") or "HTTP %s" % st))[:300]}
     if st not in (200, 201, 202) or not j.get("id"):
         return st, {"error": (j.get("message") or j.get("error") or "HTTP %s" % st)[:300]}
     AID = j["id"]; key_set("account_id", AID); _base.clear()
