@@ -212,6 +212,7 @@ td small{display:block;color:var(--muted);font-size:12px;line-height:1.35;margin
 </div>
 
 <div id="v2" style="display:none;max-width:520px">
+<div id="wd" style="margin:0 0 14px;padding:12px 14px;border-radius:14px;background:rgba(127,127,127,.12);font-size:13px;line-height:1.5">Robot de stabilitate: se verifică…</div>
 <div class="card"><div class="k">Cont MT5 conectat</div><div id="cur" class="sub" style="margin:6px 0 10px;font-size:14px">Se verifică…</div>
 <p class="note">Introdu datele contului din emailul FTMO. Parola se trimite direct la MetaApi și nu se salvează la noi. Folosește parola de investitor (doar citire).</p>
 <label class="k" for="lg">Login MT5 (număr)</label><input id="lg" inputmode="numeric" autocomplete="off" spellcheck="false" class="fi">
@@ -268,6 +269,10 @@ function curve(T,ini,eq){const asc=T.slice().reverse();let v=ini||0;const pts=[[
  if(ini)s+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+Y(ini)+'" y2="'+Y(ini)+'" stroke="var(--muted)" stroke-dasharray="4 4"/>';
  s+='<text x="'+l+'" y="'+(H-6)+'">'+new Date(t0).toLocaleDateString('ro-RO',{day:'2-digit',month:'short'})+'</text><text x="'+(W-r)+'" y="'+(H-6)+'" text-anchor="end">'+new Date(t1).toLocaleDateString('ro-RO',{day:'2-digit',month:'short'})+'</text>';$('eq').innerHTML=s;
  $('eleg').innerHTML='<span><i style="background:var(--gold1)"></i>Balanță după fiecare tranzacție închisă</span><span>linia punctată = suma depusă</span>'}
+
+async function wd(){try{const j=await (await fetch('/api/watchdog',{cache:'no-store'})).json();const ok=j.state==='ok';
+$('wd').innerHTML='<b>Robot de stabilitate: '+(ok?'🟢 totul în regulă':'🟠 '+j.state)+'</b><br><span style="opacity:.7">Repară singur conexiunea FTMO. Acțiuni azi: '+j.actions_today+'</span>'+(j.events.length?'<br><span style="opacity:.7;font-size:12px">'+j.events.slice(0,3).map(e=>e.t+' · '+e.m).join('<br>')+'</span>':'')}catch(e){}}
+wd();setInterval(wd,15000);
 async function load(){try{const r=await fetch('/api/acc',{cache:'no-store'});D=await r.json();render()}catch(e){$('upd').textContent='fără conexiune'}}
 $('csv').onclick=()=>{const T=window.TT||[];const rows=[['Inchis','Deschis','Simbol','Tip','Lot','Intrare','Iesire','Profit net']].concat(T.map(t=>[t.close,t.open,t.sym,t.dir,t.vol,t.pin,t.pout,t.net.toFixed(2)]));
  const b=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tranzactii.csv';a.click()};

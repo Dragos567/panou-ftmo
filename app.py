@@ -609,6 +609,54 @@ def acc_overview():
             except Exception: pass
     out.update(info=info, positions=_ACC["pos"][1] or [], deals=_ACC["deals"][1] or [], age=int(now - max(_ACC["info"][0], 1)))
     return out
+
+# ---------------- Robot de stabilitate: urmareste cotatiile si repara singur conexiunea ----------------
+WD = {"state": "pornit", "checked": 0, "bad_since": None, "events": collections.deque(maxlen=40), "acts": [], "alert_t": 0, "last_redeploy": 0, "was_bad": False}
+def wd_ev(msg):
+    WD["events"].appendleft({"t": time.strftime("%d.%m %H:%M:%S"), "m": msg}); log("watchdog:", msg)
+def wd_acc():
+    st, j = mapi("GET", "/users/current/accounts/%s" % AID)
+    return j if st == 200 else {"_err": "HTTP %s %s" % (st, str(j.get("message", ""))[:100])}
+def wd_call(path):
+    return mapi("POST", "/users/current/accounts/%s/%s" % (AID, path), None, {"transaction-id": secrets.token_hex(16)})
+def wd_step():
+    now = time.time(); WD["checked"] = now
+    age = now - (STAT.get("q_ok") or 0)
+    if STAT.get("q_ok") and age < 120:
+        if WD["was_bad"]:
+            mins = int((now - (WD["bad_since"] or now)) / 60)
+            wd_ev("Recuperat: cotatiile au revenit dupa ~%d min." % mins)
+            if WD["alert_t"]: ntfy("Altrix: recuperat", "Datele FTMO au revenit dupa ~%d min." % mins)
+        WD.update(state="ok", bad_since=None, was_bad=False, alert_t=0); return
+    if time.time() - STAT["started"] < 150: return        # lasa serverul sa porneasca
+    if not WD["bad_since"]: WD["bad_since"] = now; WD["was_bad"] = True; wd_ev("Cotatii oprite, urmaresc.")
+    bad = now - WD["bad_since"]; WD["state"] = "problema %d min" % int(bad / 60)
+    day = time.strftime("%Y%m%d"); WD["acts"] = [x for x in WD["acts"] if x[0] == day]
+    if bad >= 90 and len(WD["acts"]) < 10 and now - WD.get("last_act", 0) > 120:
+        WD["last_act"] = now; ac = wd_acc()
+        if ac.get("_err"): wd_ev("Nu pot citi contul: " + ac["_err"]); return
+        stt, con = ac.get("state"), ac.get("connectionStatus")
+        if stt != "DEPLOYED":
+            wd_call("deploy"); WD["acts"].append((day, "deploy")); wd_ev("Contul era %s: am pornit (deploy)." % stt)
+        elif con != "CONNECTED" and bad >= 240 and now - WD["last_redeploy"] > 600:
+            WD["last_redeploy"] = now; WD["acts"].append((day, "redeploy"))
+            wd_call("undeploy"); time.sleep(12); wd_call("deploy"); _base.clear()
+            wd_ev("Conexiune %s de %d min: am repornit contul (undeploy + deploy)." % (con, int(bad / 60)))
+        elif con == "CONNECTED":
+            _base.clear(); WD["acts"].append((day, "reset")); wd_ev("Contul e CONNECTED dar fara cotatii: am resetat conexiunea interna.")
+        else: wd_ev("Contul e %s / %s, astept." % (stt, con))
+    if bad >= 900 and now - WD["alert_t"] > 10800:
+        WD["alert_t"] = now
+        ntfy("Altrix: datele FTMO nu revin", "De peste 15 min nu primesc cotatii, iar robotul a incercat sa repare singur. Cauza probabila: cont FTMO expirat sau parola schimbata. Intra pe /cont si introdu un cont nou.")
+        wd_ev("Alerta trimisa pe telefon (probleme de peste 15 min).")
+def watchdog():
+    time.sleep(60)
+    while True:
+        try: wd_step()
+        except Exception as e: log("watchdog", repr(e))
+        time.sleep(30)
+def wd_public():
+    return {"state": WD["state"], "checked": int(WD["checked"]), "bad_for": int(time.time() - WD["bad_since"]) if WD["bad_since"] else 0, "events": list(WD["events"])[:12], "actions_today": len(WD["acts"]), "account": account_status() if False else None}
 def databento_test():
     """Verifica accesul serverului la Databento si valabilitatea cheii (apel gratuit de metadate)."""
     k = key_get("databento")
@@ -874,6 +922,7 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, body, "application/gzip", {"Content-Disposition": 'attachment; filename="%s_%s_%gy.csv.gz"' % (sy, tf or "raw", yr), "X-Rows": str(info)})
             if u.path == "/api/ext/databento": return self.send(200, databento_meta(qs) if qs.get("do", [""])[0] == "meta" else (databento_plan(qs) if qs.get("do", [""])[0] == "plan" else (databento_dl(qs) if qs.get("do", [""])[0] in ("download", "dlstatus", "estimate", "book", "bookstatus") else databento_test())))
             if u.path == "/api/quotes": return self.send(200, get_quotes())
+            if u.path == "/api/watchdog": return self.send(200, wd_public())
             if u.path == "/api/acc": return self.send(200, acc_overview())
             if u.path == "/api/calendar": return self.send(200, cached(("cal",), 300, real_calendar))
             if u.path == "/api/trdiag":
@@ -1216,6 +1265,7 @@ if __name__ == "__main__":
     threading.Thread(target=boot, daemon=True).start()
     start_quotes()
     threading.Thread(target=autopilot, daemon=True).start()
+    threading.Thread(target=watchdog, daemon=True).start()
     threading.Thread(target=evt_once, daemon=True).start()
     try:
         from lab import dbdl as _dbdl
