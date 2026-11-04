@@ -570,6 +570,9 @@ def account_connect(login, password, server):
     if st not in (200, 201, 202) or not j.get("id"):
         return st, {"error": (j.get("message") or j.get("error") or "HTTP %s" % st)[:300]}
     AID = j["id"]; key_set("account_id", AID); _base.clear()
+    _ACC.update(info=(0, None), pos=(0, None), deals=(0, None), err=None, ok=0)
+    try: os.remove(os.path.join(DATA, "acc_last.json"))
+    except Exception: pass
     try: mapi("POST", "/users/current/accounts/%s/deploy" % AID, None, {"transaction-id": secrets.token_hex(16)})
     except Exception: pass
     return 200, {"saved": True, "id_end": AID[-6:]}
