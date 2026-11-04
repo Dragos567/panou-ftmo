@@ -581,12 +581,25 @@ def _acc_get(path, tries=2, timeout=30):
     return http("%s/users/current/accounts/%s/%s" % (cb, AID, path), tries=tries, timeout=timeout)
 def _deals_file(login): return os.path.join(DATA, "deals_%s.json" % re.sub(r"\W", "", str(login or "x")))
 def acc_overview():
-    now = time.time(); out = {"t": now, "err": None}
+    now = time.time(); out = {"t": now, "err": None}; _ACC["req"] = now
     try:
         if now - _ACC["info"][0] > 4 or _ACC["info"][1] is None: _ACC["info"] = (now, _acc_get("account-information"))
         if now - _ACC["pos"][0] > 4 or _ACC["pos"][1] is None:
             p = _acc_get("positions"); _ACC["pos"] = (now, p if isinstance(p, list) else (p or {}).get("positions", []))
     except Exception as e: out["err"] = str(e)[:200]; _ACC["err"] = out["err"]
+    _lf = os.path.join(DATA, "acc_last.json")
+    if _ACC["info"][1] and not out["err"]:
+        _ACC["ok"] = now
+        if now - _ACC.get("saved", 0) > 20:
+            _ACC["saved"] = now
+            try: json.dump({"info": _ACC["info"][1], "pos": _ACC["pos"][1] or []}, open(_lf, "w", encoding="utf-8"))
+            except Exception: pass
+    elif not _ACC["info"][1] or out["err"]:
+        try:
+            if not _ACC["info"][1]:
+                _l = json.load(open(_lf, encoding="utf-8")); _ACC["info"] = (1, _l["info"]); _ACC["pos"] = (1, _l["pos"])
+            out["stale"] = True
+        except Exception: pass
     info = _ACC["info"][1] or {}; login = info.get("login")
     try:
         if now - _ACC["deals"][0] > 60 or _ACC["deals"][1] is None:
@@ -622,7 +635,8 @@ def wd_call(path):
 def wd_step():
     now = time.time(); WD["checked"] = now
     age = now - (STAT.get("q_ok") or 0)
-    if STAT.get("q_ok") and age < 120:
+    acc_bad = _ACC.get("err") and now - _ACC.get("ok", 0) > 120 and now - _ACC.get("req", 0) < 120
+    if STAT.get("q_ok") and age < 120 and not acc_bad:
         if WD["was_bad"]:
             mins = int((now - (WD["bad_since"] or now)) / 60)
             wd_ev("Recuperat: cotatiile au revenit dupa ~%d min." % mins)

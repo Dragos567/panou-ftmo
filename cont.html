@@ -244,7 +244,7 @@ function render(){if(!D)return;const I=D.info||{},P=D.positions||[],T=trades(D.d
  const bal=I.balance,eq=I.equity,fl=P.reduce((s,p)=>s+(p.profit||0)+(p.swap||0),0);
  const netAll=T.reduce((s,t)=>s+t.net,0),ini=initial(D.deals||[],bal,netAll);
  const today=dayKey(Date.now()),pt=T.filter(t=>dayKey(t.close)===today).reduce((s,t)=>s+t.net,0)+fl;
- $('upd').textContent=D.err?'eroare date':'actualizat '+new Date().toLocaleTimeString('ro-RO');
+ $('upd').textContent=D.err?('date vechi · '+D.err.slice(0,90)):'actualizat '+new Date().toLocaleTimeString('ro-RO');
  $('bar').innerHTML=(I.login?'<span class="dot on"></span>Cont <b>'+I.login+'</b> · '+(I.server||'')+' · '+(I.currency||'')+' · levier 1:'+(I.leverage||'?'):'<span class="dot"></span>Niciun cont conectat sau fără date')+(D.err?' · <span class="down">'+D.err.slice(0,120)+'</span>':'');
  const k=[['Balanță',nf(bal)+' '+(I.currency||''),'bani închiși',''],['Equity',nf(eq)+' '+(I.currency||''),'balanță + deschise',''],['Profit deschis',sg(fl),P.length+' poziții',cl(fl)],['P/L azi',sg(pt),'închis + deschis',cl(pt)],['Randament total',ini?sg((eq-ini)/ini*100)+'%':'–','față de '+nf(ini)+' depus',cl(eq-ini)],['Marjă liberă',nf(I.freeMargin),'marjă folosită '+nf(I.margin),'']];
  $('kpi').innerHTML=k.map(x=>'<div class="card"><div class="k">'+x[0]+'</div><div class="v '+x[3]+'">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>').join('');
