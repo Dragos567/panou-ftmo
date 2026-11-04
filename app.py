@@ -555,8 +555,12 @@ def account_status():
     return {"id_end": AID[-6:], "name": j.get("name"), "login": j.get("login"), "server": j.get("server"), "state": j.get("state"), "connection": j.get("connectionStatus")}
 def account_connect(login, password, server):
     global AID
-    st, j = mapi("POST", "/users/current/accounts", {"name": "Altrix-FTMO-" + time.strftime("%m%d%H%M"), "type": "cloud-g2", "login": login, "password": password,
-                 "server": server, "platform": "mt5", "magic": 0, "application": "MetaApi", "reliability": "high"}, {"transaction-id": secrets.token_hex(16)})
+    def _mk(rel):
+        return mapi("POST", "/users/current/accounts", {"name": "Altrix-FTMO-" + time.strftime("%m%d%H%M"), "type": "cloud-g2", "login": login, "password": password,
+                 "server": server, "platform": "mt5", "magic": 0, "application": "MetaApi", "reliability": rel}, {"transaction-id": secrets.token_hex(16)})
+    st, j = _mk("high")
+    if st not in (200, 201, 202) and ("top up" in str(j.get("message", "")).lower() or "reliab" in str(j.get("message", "")).lower()):
+        st, j = _mk("regular")   # fiabilitate 'high' cere sold in MetaApi; 'regular' merge pe contul gratuit
     if st not in (200, 201, 202) or not j.get("id"):
         return st, {"error": (j.get("message") or j.get("error") or "HTTP %s" % st)[:300]}
     AID = j["id"]; key_set("account_id", AID); _base.clear()
