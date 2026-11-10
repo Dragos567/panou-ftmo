@@ -204,6 +204,11 @@ table.lst tr.click:hover td{background:var(--panel2)}
 .sk{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
 /* ---- pagina Acasă ---- */
 .hero{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:12px;margin-top:14px}
+.rs{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel);box-shadow:var(--shadow);margin-top:12px}
+.rs .rh{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;justify-content:space-between}.rs .rk{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rs .rt{font-weight:600;font-size:16px;margin-top:3px}.rs .rn{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:8px;font-size:14px;color:var(--muted)}.rs .rn b{color:var(--text)}
+.rs .rv{margin-top:10px;font-size:14.5px}.rs .ri{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 14px;margin-top:10px}
+.rs .ro{display:flex;gap:8px;align-items:baseline;font-size:13.5px;line-height:1.35}.rs .ro .ar{font-family:var(--mono);min-width:64px;font-weight:600}.rs .ro small{color:var(--muted);display:block;font-size:12.5px}
 .hc{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel);box-shadow:var(--shadow);min-width:0}
 .hc.emph{background:linear-gradient(135deg,color-mix(in srgb,var(--warn) 13%,var(--panel)),var(--panel) 70%);border-color:color-mix(in srgb,var(--warn) 32%,var(--line))}
 .hk{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
@@ -571,6 +576,7 @@ body{max-width:none!important;padding-inline:var(--gut)!important}
 </header>
 <section class="strip" id="strip" aria-label="Prețuri"></section>
 <section class="hero" id="hero" aria-label="Acum"></section>
+<section id="heroRes" aria-label="Rezultatul ultimei știri"></section>
 <div id="evBanner"></div>
 
 <div class="mgrid">
@@ -751,6 +757,23 @@ function sessionNow(){const h=new Date().getUTCHours()+new Date().getUTCMinutes(
   const L=[[0,7,'Asia · Tokyo','Piețe asiatice active; lichiditate mai mică pe EUR și GBP'],[7,12,'Londra','Kill zone Londra: cea mai bună lichiditate pentru EUR, GBP, DAX, UK100'],[12,16,'Londra + New York','Suprapunere: volatilitate maximă, se publică datele SUA'],[16,21,'New York','După-amiaza americană; aurul și dolarul dictează'],[21,24,'Închidere','Lichiditate redusă, spread-uri mai largi']];
   for(const[a,b,n,t] of L)if(h>=a&&h<b){const m=Math.round((b-h)*60);return{n,t,left:m>=60?`${Math.floor(m/60)} h ${m%60} min`:`${m} min`}}
   return{n:'—',t:'',left:''}}
+function renderRes(){
+  const box=$('#heroRes');if(!box)return;const now=Date.now()/1000;
+  const L=S.cal.filter(e=>e.importance>=1&&CURS.includes(e.currency)&&e.ts<=now-60&&e.ts>now-36*3600&&e.actual!=null).sort((a,b)=>b.ts-a.ts);
+  const e=L[0];if(!e){box.innerHTML='';return}
+  const c=classify(e.title_en||e.title),su=surprise(e),[d,h]=evTime(e.ts);
+  let verdict,rows='';
+  if(su===null||c.sign===0){verdict=c.cat==='speech'?'Discurs/ședință: contează tonul, nu un număr. Urmărește reacția prețului.':'Fără prognoză sau regulă clară pentru acest indicator.'}
+  else if(su===0){verdict='În linie cu prognoza: reacție mică probabilă, piața rămâne pe structura tehnică.'}
+  else{const s=su*c.sign;verdict=`<b>${su>0?'Peste':'Sub'} prognoză</b> → ${esc(e.currency)} ${s>0?'mai puternic':'mai slab'}.`;
+    const imp=impactOf(e,s);
+    rows=IN.map(k=>{const x=imp[k];if(!x.d)return `<div class="ro"><span class="ar muted">● neutru</span><span>${INSTR[k].label}</span></div>`;
+      return `<div class="ro"><span class="ar ${x.d>0?'up':'down'}">${x.d>0?'▲ sus':'▼ jos'}</span><span><b>${INSTR[k].label}</b><small>${esc(x.why)}</small></span></div>`}).join('')}
+  const pc=Object.values(S.quotes||{}).length?'':'';
+  box.innerHTML=`<div class="rs"><div class="rh"><div><div class="rk">Rezultatul ultimei știri cu impact</div><div class="rt">${esc(e.currency)} · ${esc(e.title)}</div></div><div class="muted" style="font-size:13px">${d} ${h}</div></div>
+  <div class="rn"><span>actual <b class="${su>0?'up':su<0?'down':''}">${nv(e.actual,e.unit)}</b></span><span>prognoză <b>${nv(e.forecast,e.unit)}</b></span><span>anterior <b>${nv(e.previous,e.unit)}</b></span></div>
+  <div class="rv">${verdict}</div>${rows?`<div class="ri">${rows}</div>`:''}
+  <div class="note" style="margin-top:10px">Estimare pe baza surprizei față de prognoză, nu recomandare. Prima reacție a prețului poate fi inversă; confirmă cu graficul.</div></div>`}
 function renderHero(){
   const box=$('#hero');if(!box)return;const now=Date.now()/1000,ses=sessionNow();
   const hi=S.cal.filter(e=>e.importance>=1&&CURS.includes(e.currency)&&e.ts>now-600).sort((a,b)=>a.ts-b.ts);
@@ -780,7 +803,7 @@ function tick(){document.querySelectorAll('.cdn').forEach(el=>el.textContent=cd(
 
 /* ---------- încărcare ---------- */
 async function loadCal(){try{S.cal=await api('/api/calendar');S.calErr=null;S.lastOk=Date.now();S.err=null}catch(e){S.calErr=e.message;S.err=e.message}
-  renderCal();renderBias();renderNext();renderEv();renderHero();renderStatus()}
+  renderCal();renderBias();renderNext();renderEv();renderHero();renderRes();renderStatus()}
 async function loadNews(){const k=S.newsTab;try{S.news[k]=await api('/api/news?sym='+k)}catch(e){S.news[k]={error:e.message}}renderNews()}
 async function loadQuotes(){try{S.quotes=await api('/api/quotes')}catch(e){}renderStrip()}
 $('#calFilter').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(b){S.calF=b.dataset.f;store.set('calF',S.calF);renderCal()}});
@@ -788,7 +811,7 @@ $('#newsTabs').addEventListener('click',e=>{const b=e.target.closest('[data-nt]'
 function applyTheme(t){document.documentElement.dataset.theme=t;store.set('theme',t)}
 applyTheme(store.get('theme','dark'));$('#btnTheme').onclick=()=>applyTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
 setInterval(function(){var t=new Date().toLocaleTimeString('ro-RO');document.querySelectorAll('.clk').forEach(function(e){e.textContent=t})},1000);
-renderStrip();renderNews();renderCal();renderBias();renderNext();renderHero();renderStatus();
+renderStrip();renderNews();renderCal();renderBias();renderNext();renderHero();renderRes();renderStatus();
 loadCal();loadNews();loadQuotes();
 setInterval(loadCal,120000);setInterval(loadNews,150000);setInterval(()=>{if(!document.hidden)loadQuotes()},2000);setInterval(tick,1000);setInterval(()=>{renderEv();renderNext();renderHero()},30000);
 
